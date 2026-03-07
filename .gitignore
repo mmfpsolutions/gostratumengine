@@ -39,6 +39,9 @@ troubleshooting/
 # Build output
 bin/
 
+# Claude Code
+CLAUDE.md
+
 # Editor/IDE
 # .idea/
 # .vscode/
