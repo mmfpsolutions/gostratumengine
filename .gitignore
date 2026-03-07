@@ -27,6 +27,18 @@ go.work.sum
 # env file
 .env
 
+# User config (contains credentials)
+config.json
+
+# Internal design documents
+design-documents/
+
+# Troubleshooting notes
+troubleshooting/
+
+# Build output
+bin/
+
 # Editor/IDE
 # .idea/
 # .vscode/

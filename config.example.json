@@ -1,0 +1,155 @@
+{
+  "pool_name": "MyPool",
+  "log_level": "info",
+  "api_port": 8080,
+  "coins": {
+    "BTC": {
+      "enabled": true,
+      "coin_type": "bitcoin",
+      "node": {
+        "host": "127.0.0.1",
+        "port": 8332,
+        "username": "rpcuser",
+        "password": "rpcpassword",
+        "zmq_enabled": true,
+        "zmq_hashblock": "tcp://127.0.0.1:28332"
+      },
+      "stratum": {
+        "host": "0.0.0.0",
+        "port": 3333,
+        "difficulty": 1024,
+        "ping_enabled": true,
+        "ping_interval": 30
+      },
+      "mining": {
+        "mode": "pool",
+        "address": "bc1qYOURADDRESSHERE",
+        "network": "mainnet",
+        "coinbase_text": "MyPool/GoStratumEngine",
+        "extranonce_size": 8
+      },
+      "vardiff": {
+        "enabled": true,
+        "min_diff": 512,
+        "max_diff": 32768,
+        "target_time": 15,
+        "retarget_time": 300,
+        "variance_percent": 30,
+        "float_diff": false,
+        "float_precision": 2
+      },
+      "template_refresh_interval": 5
+    },
+    "DGB": {
+      "enabled": false,
+      "coin_type": "digibyte",
+      "node": {
+        "host": "127.0.0.1",
+        "port": 14022,
+        "username": "rpcuser",
+        "password": "rpcpassword",
+        "zmq_enabled": false,
+        "zmq_hashblock": ""
+      },
+      "stratum": {
+        "host": "0.0.0.0",
+        "port": 3334,
+        "difficulty": 512,
+        "ping_enabled": true,
+        "ping_interval": 30
+      },
+      "mining": {
+        "mode": "pool",
+        "address": "dgb1qYOURADDRESSHERE",
+        "network": "mainnet",
+        "coinbase_text": "MyPool/GoStratumEngine",
+        "extranonce_size": 8
+      },
+      "vardiff": {
+        "enabled": true,
+        "min_diff": 256,
+        "max_diff": 16384,
+        "target_time": 15,
+        "retarget_time": 300,
+        "variance_percent": 30,
+        "float_diff": false,
+        "float_precision": 2
+      },
+      "template_refresh_interval": 5
+    },
+    "BCH": {
+      "enabled": false,
+      "coin_type": "bitcoincash",
+      "node": {
+        "host": "127.0.0.1",
+        "port": 8332,
+        "username": "rpcuser",
+        "password": "rpcpassword",
+        "zmq_enabled": false,
+        "zmq_hashblock": ""
+      },
+      "stratum": {
+        "host": "0.0.0.0",
+        "port": 3335,
+        "difficulty": 512,
+        "ping_enabled": true,
+        "ping_interval": 30
+      },
+      "mining": {
+        "mode": "pool",
+        "address": "bitcoincash:qYOURADDRESSHERE",
+        "network": "mainnet",
+        "coinbase_text": "MyPool/GoStratumEngine",
+        "extranonce_size": 8
+      },
+      "vardiff": {
+        "enabled": true,
+        "min_diff": 256,
+        "max_diff": 16384,
+        "target_time": 15,
+        "retarget_time": 300,
+        "variance_percent": 30,
+        "float_diff": false,
+        "float_precision": 2
+      },
+      "template_refresh_interval": 5
+    },
+    "XEC": {
+      "enabled": false,
+      "coin_type": "ecash",
+      "node": {
+        "host": "127.0.0.1",
+        "port": 8332,
+        "username": "rpcuser",
+        "password": "rpcpassword",
+        "zmq_enabled": false,
+        "zmq_hashblock": ""
+      },
+      "stratum": {
+        "host": "0.0.0.0",
+        "port": 3336,
+        "difficulty": 512,
+        "ping_enabled": true,
+        "ping_interval": 30
+      },
+      "mining": {
+        "mode": "pool",
+        "address": "ecash:qYOURADDRESSHERE",
+        "network": "mainnet",
+        "coinbase_text": "MyPool/GoStratumEngine",
+        "extranonce_size": 8
+      },
+      "vardiff": {
+        "enabled": true,
+        "min_diff": 256,
+        "max_diff": 16384,
+        "target_time": 15,
+        "retarget_time": 300,
+        "variance_percent": 30,
+        "float_diff": false,
+        "float_precision": 2
+      },
+      "template_refresh_interval": 5
+    }
+  }
+}
