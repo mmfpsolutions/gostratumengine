@@ -14,6 +14,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -52,6 +54,9 @@ type Session struct {
 	// Version rolling
 	versionRollingEnabled bool
 	versionRollingMask    uint32
+
+	// Pending difficulty change (applied on next job broadcast)
+	pendingDiff float64
 
 	// Solo mining
 	miningAddress string
@@ -170,6 +175,11 @@ func (s *Session) handleAuthorize(req *Request) {
 
 	s.workerName = params[0]
 
+	// Parse password-based difficulty: "d=512" or "d=1024" in params[1]
+	if len(params) >= 2 {
+		s.parsePasswordDifficulty(params[1])
+	}
+
 	// Call authorize handler if set (solo mode uses this for address validation)
 	if s.server.authorizeHandler != nil {
 		miningAddr, err := s.server.authorizeHandler(s, s.workerName)
@@ -227,27 +237,52 @@ func (s *Session) handleSubmit(req *Request) {
 
 	s.sendResult(req.ID, true)
 
-	// Check vardiff after successful share
+	// Check vardiff after successful share — store pending diff for next job broadcast
 	if s.vardiff != nil {
 		if newDiff := s.vardiff.RecordShare(); newDiff > 0 {
 			s.mu.Lock()
-			s.difficulty = newDiff
+			s.pendingDiff = newDiff
 			s.mu.Unlock()
-			s.sendJSON(SetDifficultyNotification(newDiff))
-			s.logger.Debug("[%s] vardiff adjusted to %.2f for %s", s.ID, newDiff, s.workerName)
+			s.logger.Debug("[%s] vardiff queued %.2f for %s (sent with next job)", s.ID, newDiff, s.workerName)
 		}
 	}
 }
 
 func (s *Session) handleSuggestDifficulty(req *Request) {
-	// Like GSS, ignore mining.suggest_difficulty — the pool's configured difficulty
-	// and VarDiff are the authority. Accepting miner-suggested difficulty can cause
-	// problems (e.g., Bitaxe firmware re-sending after every ping, undoing VarDiff).
 	var params []float64
-	if err := json.Unmarshal(req.Params, &params); err == nil && len(params) > 0 {
-		s.logger.Debug("[%s] mining.suggest_difficulty ignored (requested: %.2f, using pool diff: %.2f)", s.ID, params[0], s.difficulty)
+	if err := json.Unmarshal(req.Params, &params); err != nil || len(params) < 1 {
+		s.sendResult(req.ID, true)
+		return
 	}
-	// Respond with true to acknowledge (don't error)
+
+	suggested := params[0]
+
+	if !s.server.acceptSuggestDiff {
+		s.logger.Debug("[%s] mining.suggest_difficulty ignored (requested: %.2f, using pool diff: %.2f)", s.ID, suggested, s.difficulty)
+		s.sendResult(req.ID, true)
+		return
+	}
+
+	// Clamp to vardiff bounds if configured, otherwise use as-is
+	newDiff := suggested
+	if s.vardiff != nil {
+		if newDiff < s.vardiff.minDiff {
+			newDiff = s.vardiff.minDiff
+		}
+		if newDiff > s.vardiff.maxDiff {
+			newDiff = s.vardiff.maxDiff
+		}
+	}
+	if newDiff <= 0 {
+		newDiff = s.server.defaultDiff
+	}
+
+	s.mu.Lock()
+	s.difficulty = newDiff
+	s.mu.Unlock()
+
+	s.sendJSON(SetDifficultyNotification(newDiff))
+	s.logger.Info("[%s] mining.suggest_difficulty accepted: requested=%.2f set=%.2f", s.ID, suggested, newDiff)
 	s.sendResult(req.ID, true)
 }
 
@@ -283,16 +318,57 @@ func (s *Session) handleConfigure(req *Request) {
 	s.logger.Debug("[%s] configure: version-rolling=%v", s.ID, s.versionRollingEnabled)
 }
 
+// parsePasswordDifficulty checks the authorize password field for "d=XXX"
+// and sets the session difficulty if found. Clamped to vardiff bounds.
+func (s *Session) parsePasswordDifficulty(password string) {
+	for _, part := range strings.Split(password, ",") {
+		part = strings.TrimSpace(part)
+		if strings.HasPrefix(part, "d=") {
+			val, err := strconv.ParseFloat(part[2:], 64)
+			if err != nil || val <= 0 {
+				continue
+			}
+			// Clamp to vardiff bounds if configured
+			if s.vardiff != nil {
+				if val < s.vardiff.minDiff {
+					val = s.vardiff.minDiff
+				}
+				if val > s.vardiff.maxDiff {
+					val = s.vardiff.maxDiff
+				}
+			}
+			s.difficulty = val
+			s.logger.Info("[%s] password difficulty set to %.2f for %s", s.ID, val, s.workerName)
+			return
+		}
+	}
+}
+
 // SendPing sends a mining.ping request to the miner with a numeric ID.
 func (s *Session) SendPing(id uint64) {
 	s.sendJSON(PingRequest(id))
 }
 
 // SendJob sends a mining.notify notification to the miner.
+// If a vardiff adjustment is pending, set_difficulty is sent first.
 func (s *Session) SendJob(job *Job) {
 	if s.state < StateAuthorized {
 		return
 	}
+
+	// Flush pending vardiff — send set_difficulty before the job
+	s.mu.Lock()
+	if s.pendingDiff > 0 {
+		newDiff := s.pendingDiff
+		s.difficulty = newDiff
+		s.pendingDiff = 0
+		s.mu.Unlock()
+		s.sendJSON(SetDifficultyNotification(newDiff))
+		s.logger.Debug("[%s] vardiff applied %.2f for %s", s.ID, newDiff, s.workerName)
+	} else {
+		s.mu.Unlock()
+	}
+
 	s.sendJSON(NotifyNotification(job))
 }
 

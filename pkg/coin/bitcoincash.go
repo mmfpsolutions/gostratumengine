@@ -85,7 +85,7 @@ func (b *BitcoinCash) ValidateAddress(address, network string) error {
 	return nil
 }
 
-func (b *BitcoinCash) addressToScript(address, network string) ([]byte, error) {
+func (b *BitcoinCash) AddressToScript(address, network string) ([]byte, error) {
 	prefix := b.Params().CashAddrPrefix
 	if network == "testnet" {
 		prefix = "bchtest"
@@ -126,16 +126,22 @@ func (b *BitcoinCash) addressToScript(address, network string) ([]byte, error) {
 }
 
 func (b *BitcoinCash) BuildCoinbase(template *noderpc.BlockTemplate, address, network, coinbaseText string,
-	extraNonce1Size, extraNonce2Size int) (string, string, error) {
+	extraNonce1Size, extraNonce2Size int, extraOutputs []coinbase.CoinbaseOutput) (string, string, error) {
 
-	script, err := b.addressToScript(address, network)
+	script, err := b.AddressToScript(address, network)
 	if err != nil {
 		return "", "", fmt.Errorf("building output script: %w", err)
 	}
 
-	outputs := []coinbase.CoinbaseOutput{
-		{Value: template.CoinbaseValue, Script: script},
+	poolValue := template.CoinbaseValue
+	for _, eo := range extraOutputs {
+		poolValue -= eo.Value
 	}
+	outputs := []coinbase.CoinbaseOutput{
+		{Value: poolValue, Script: script},
+	}
+
+	outputs = append(outputs, extraOutputs...)
 
 	// No SegWit for BCH
 	coinb1, coinb2 := coinbase.BuildCoinbaseParts(

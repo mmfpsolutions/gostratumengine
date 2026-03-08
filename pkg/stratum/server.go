@@ -44,6 +44,7 @@ type Server struct {
 	onSessionRemoved     func(session *Session)
 	extraNonceSize       int
 	defaultDiff          float64
+	acceptSuggestDiff    bool
 	pingEnabled          bool
 	pingInterval         time.Duration
 	idleTimeout          time.Duration
@@ -61,6 +62,7 @@ type ServerConfig struct {
 	Port                 int
 	ExtraNonceSize       int
 	DefaultDiff          float64
+	AcceptSuggestDiff    bool
 	PingEnabled          bool
 	PingInterval         time.Duration
 	IdleTimeout          time.Duration
@@ -84,6 +86,7 @@ func NewServer(cfg ServerConfig, shareHandler ShareHandler) *Server {
 		onSessionRemoved:     cfg.OnSessionRemoved,
 		extraNonceSize:       cfg.ExtraNonceSize,
 		defaultDiff:          cfg.DefaultDiff,
+		acceptSuggestDiff:    cfg.AcceptSuggestDiff,
 		pingEnabled:          cfg.PingEnabled,
 		pingInterval:         cfg.PingInterval,
 		idleTimeout:          cfg.IdleTimeout,

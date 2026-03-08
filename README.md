@@ -1,18 +1,45 @@
 # GoStratumEngine
 
-An open-source Stratum V1 mining pool engine written in Go. Clean-room implementation inspired by [GoSlimStratum](https://github.com/mmfpsolutions/goslimstratum).
+An open-source Stratum V1 mining pool engine written in Go. Clean-room implementation developed independently. For enterprise features, see [GoSlimStratum](https://www.mmfpsolutions.io).
+
+GoStratumEngine is provided free of charge under the GPLv3 license. By default, the engine contributes 1% of solved blocks to the development team to help fund ongoing development. This applies to both pool and solo mining modes. Please consider leaving this contribution enabled if you are running GoStratumEngine, or contributing directly to the authors listed in `pkg/engine/AUTHORS`. The donation can be disabled or adjusted in `config.json` — see the [Donation](#donation) section below.
 
 ## Features
 
 - **Multi-coin support** — BTC, BCH, DGB, and XEC
 - **Pool and Solo mining modes** — pool mode uses a single payout address; solo mode lets each miner provide their own wallet address
-- **Variable Difficulty (VarDiff)** — automatically adjusts per-miner difficulty based on hashrate
+- **Variable Difficulty (VarDiff)** — automatically adjusts per-miner difficulty based on hashrate, sent with job updates (not mid-share)
+- **Stale share grace period** — configurable window (default 5s) to accept in-flight shares after a new block
+- **mining.suggest_difficulty** — optionally honor miner-requested difficulty (configurable per coin)
+- **Password-based difficulty** — miners can set difficulty via `d=XXX` in the authorize password field
 - **Version Rolling** — BIP310 support for ASICBoost-capable miners
 - **Server-side Ping** — configurable mining.ping/pong keepalive cycle
 - **ZMQ block notifications** — instant new block detection via pure-Go ZMQ (no CGO)
 - **Address format support** — Bech32 (P2WPKH/P2WSH), Base58 (P2PKH/P2SH), and CashAddr
 - **Metrics API** — HTTP endpoints for pool stats, per-worker metrics, and live session info
 - **No database** — all state is in-memory for simplicity and performance
+
+## DigiByte (DGB) Support
+
+Most open-source stratum implementations only support Bitcoin. GoStratumEngine includes native DigiByte support:
+
+- **SegWit-aware coinbase construction** — proper witness commitment handling for DGB's SegWit transactions
+- **Native address validation** — Bech32 (`dgb1...`), P2PKH, and P2SH with correct DGB version bytes (mainnet and testnet)
+- **Correct address script generation** — P2WPKH, P2WSH, P2PKH, and P2SH output scripts for DGB's address formats
+
+DigiByte uses SHA-256d for its SHA-256 algorithm slot, making it compatible with standard Bitcoin ASIC miners. GoStratumEngine handles DGB's unique address encoding and SegWit implementation out of the box.
+
+## eCash (XEC) Support
+
+eCash has unique consensus requirements that most stratum implementations ignore entirely. GoStratumEngine is Avalanche-aware:
+
+- **Real Time Target (RTT) validation** — computes and validates the eCash RTT before submitting blocks, preventing wasted submissions that the network would reject
+- **Avalanche chain reorg detection** — verifies the chain tip hasn't changed between template fetch and block submission, avoiding submissions on parked chains
+- **Block submission cooldown** — 30-second cooldown after submitting a block to prevent submitting on Avalanche-parked chain forks
+- **Miner Fund & Staking Rewards** — automatically includes mandatory miner fund and staking reward outputs in the coinbase transaction as required by the eCash protocol
+- **CashAddr address support** — native `ecash:` prefix CashAddr validation and script generation, plus legacy Base58 fallback
+
+These protections are critical for eCash mining. Without RTT validation and Avalanche awareness, a stratum server will submit blocks that get rejected by the network — wasting miner effort and missing block rewards.
 
 ## Supported Platforms
 
@@ -70,7 +97,9 @@ Copy `config.example.json` to `config.json` and edit for your setup. Key section
         "port": 3333,
         "difficulty": 1024,
         "ping_enabled": true,
-        "ping_interval": 30
+        "ping_interval": 30,
+        "accept_suggest_diff": false,
+        "stale_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -135,6 +164,29 @@ pkg/
 - Go 1.25+ (for building from source)
 - A full node for each coin you want to mine (Bitcoin Core, DigiByte Core, Bitcoin Cash Node, Bitcoin ABC)
 - ZMQ enabled on your node (recommended for instant block detection)
+
+## Donation
+
+GoStratumEngine includes an optional developer donation that contributes a small percentage of each block reward to the project authors. This helps fund continued development and maintenance of the project.
+
+- **Enabled by default** at 1% of the block reward
+- Applies to both **pool** and **solo** mining modes
+- Donation addresses are embedded in the binary (`pkg/engine/AUTHORS`)
+- Per-coin, per-network addresses (mainnet and testnet)
+- If no donation address exists for a coin/network combination, donation is silently skipped
+
+To adjust or disable, add a `donation` section to your `config.json`:
+
+```json
+{
+  "donation": {
+    "enabled": true,
+    "percent": 1.0
+  }
+}
+```
+
+Set `"enabled": false` to disable donations entirely, or adjust `"percent"` to change the amount.
 
 ## License
 

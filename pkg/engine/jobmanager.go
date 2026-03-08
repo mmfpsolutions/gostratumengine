@@ -45,6 +45,7 @@ type JobManager struct {
 
 	jobs           map[string]*JobData
 	currentTip     string
+	tipChangedAt   time.Time
 	jobCounter     uint64
 	maxJobHistory  int
 	mu             sync.RWMutex
@@ -53,6 +54,10 @@ type JobManager struct {
 	soloMode       bool
 	connectedAddrs map[string]int // address -> session count
 	addrMu         sync.RWMutex
+
+	// Donation config
+	donationScript  []byte
+	donationPercent float64
 
 	onNewJob func(*stratum.Job)
 	logger   *logging.Logger
@@ -71,6 +76,8 @@ type JobManagerConfig struct {
 	PollInterval    time.Duration
 	OnNewJob        func(*stratum.Job)
 	SoloMode        bool
+	DonationScript  []byte
+	DonationPercent float64
 }
 
 // NewJobManager creates a new job manager.
@@ -94,6 +101,8 @@ func NewJobManager(cfg JobManagerConfig) *JobManager {
 		jobs:            make(map[string]*JobData),
 		maxJobHistory:   10,
 		soloMode:        cfg.SoloMode,
+		donationScript:  cfg.DonationScript,
+		donationPercent: cfg.DonationPercent,
 		onNewJob:        cfg.OnNewJob,
 		logger:          logging.New(logging.ModuleEngine),
 		stopCh:          make(chan struct{}),
@@ -146,6 +155,13 @@ func (jm *JobManager) CurrentTip() string {
 	return jm.currentTip
 }
 
+// TipChangedAt returns when the current tip was first seen.
+func (jm *JobManager) TipChangedAt() time.Time {
+	jm.mu.RLock()
+	defer jm.mu.RUnlock()
+	return jm.tipChangedAt
+}
+
 // ExtraNonce1Size returns the extranonce1 byte size.
 func (jm *JobManager) ExtraNonce1Size() int {
 	return jm.extraNonce1Size
@@ -154,6 +170,22 @@ func (jm *JobManager) ExtraNonce1Size() int {
 // ExtraNonce2Size returns the extranonce2 byte size.
 func (jm *JobManager) ExtraNonce2Size() int {
 	return jm.extraNonce2Size
+}
+
+// donationOutputs computes the donation coinbase output for a given template.
+// Returns nil if donation is not configured.
+func (jm *JobManager) donationOutputs(template *noderpc.BlockTemplate) []coinbase.CoinbaseOutput {
+	if jm.donationScript == nil || jm.donationPercent <= 0 {
+		return nil
+	}
+	poolReward := jm.coin.PoolReward(template)
+	donationValue := int64(float64(poolReward) * jm.donationPercent / 100.0)
+	if donationValue <= 0 {
+		return nil
+	}
+	return []coinbase.CoinbaseOutput{
+		{Value: donationValue, Script: jm.donationScript},
+	}
 }
 
 func (jm *JobManager) pollLoop() {
@@ -194,6 +226,9 @@ func (jm *JobManager) refreshTemplate(force bool) error {
 		// For simplicity, always create a new job on poll to capture new transactions
 	}
 
+	if cleanJobs {
+		jm.tipChangedAt = time.Now()
+	}
 	jm.currentTip = template.PreviousBlockHash
 
 	// Build coinbase
@@ -213,7 +248,7 @@ func (jm *JobManager) refreshTemplate(force bool) error {
 		for i, addr := range addresses {
 			c1, c2, err := jm.coin.BuildCoinbase(
 				template, addr, jm.network, jm.coinbaseText,
-				jm.extraNonce1Size, jm.extraNonce2Size,
+				jm.extraNonce1Size, jm.extraNonce2Size, jm.donationOutputs(template),
 			)
 			if err != nil {
 				jm.logger.Error("building coinbase for address %s: %v", addr, err)
@@ -228,7 +263,7 @@ func (jm *JobManager) refreshTemplate(force bool) error {
 		if coinb1 == "" && jm.address != "" {
 			coinb1, _, _ = jm.coin.BuildCoinbase(
 				template, jm.address, jm.network, jm.coinbaseText,
-				jm.extraNonce1Size, jm.extraNonce2Size,
+				jm.extraNonce1Size, jm.extraNonce2Size, jm.donationOutputs(template),
 			)
 		}
 	} else {
@@ -236,7 +271,7 @@ func (jm *JobManager) refreshTemplate(force bool) error {
 		var err error
 		coinb1, coinb2, err = jm.coin.BuildCoinbase(
 			template, jm.address, jm.network, jm.coinbaseText,
-			jm.extraNonce1Size, jm.extraNonce2Size,
+			jm.extraNonce1Size, jm.extraNonce2Size, jm.donationOutputs(template),
 		)
 		if err != nil {
 			return fmt.Errorf("building coinbase: %w", err)
@@ -397,7 +432,7 @@ func (jm *JobManager) RegisterAddress(address string) {
 			if _, exists := jobData.AddressCoinb2s[address]; !exists {
 				c1, c2, err := jm.coin.BuildCoinbase(
 					jobData.Template, address, jm.network, jm.coinbaseText,
-					jm.extraNonce1Size, jm.extraNonce2Size,
+					jm.extraNonce1Size, jm.extraNonce2Size, jm.donationOutputs(jobData.Template),
 				)
 				if err != nil {
 					jm.logger.Error("building coinbase for new address %s: %v", address, err)

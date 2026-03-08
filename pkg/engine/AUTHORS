@@ -1,0 +1,27 @@
+# GoStratumEngine Authors & Donation Addresses
+#
+# This file is embedded into the binary at compile time.
+# When donation is enabled in config.json, a small percentage of each
+# block reward is donated to the project authors listed below.
+#
+# This code was developed by Scott Walter, MMFP Solutions LLC
+# <scott {at} mmfpsolution {dot} io>
+# Format: SYMBOL NETWORK ADDRESS
+# Lines starting with # are comments. Blank lines are ignored.
+# The first matching SYMBOL+NETWORK entry is used.
+
+# Bitcoin (BTC)
+BTC mainnet bc1qxfju0ynhkt2muq9jaqj2nh78yg5qgmpk5kl00v
+BTC testnet mgGsP6XUSy6YBfJJ8r4o5B9ZjEq1R5inRV
+
+# Bitcoin Cash (BCH)
+BCH mainnet bitcoincash:qr7tknknndvdh8jyq0v9qzectcmx5zgqlvhqncystt
+BCH testnet bchtest:qqjhdmjy2yfxynjys0n6hggnx32pgvheegntrkmvqu
+
+# DigiByte (DGB)
+DGB mainnet D8HCqTxncZkSvejbhx7ByLXAPSrEpaBzZ5
+DGB testnet dgbt1q087z5hmn78fegv8nw7wmx8wxtppr8c59aa03yl
+
+# eCash (XEC)
+XEC mainnet ecash:qpyryen4uqy79s2qum3aq9t7pv8ge67fxsxrvjftfn
+

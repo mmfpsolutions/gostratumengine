@@ -24,27 +24,35 @@ import (
 	"github.com/mmfpsolutions/gostratumengine/pkg/stratum"
 )
 
+// ecashBlockCooldown is the duration after submitting an eCash block
+// during which new block submissions are suppressed to avoid submitting
+// on Avalanche-parked chains.
+const ecashBlockCooldown = 30 * time.Second
+
 // ShareValidator validates share submissions from miners.
 type ShareValidator struct {
-	coin      coin.Coin
-	jobMgr    *JobManager
-	rpcClient *noderpc.Client
-	stats     *metrics.Stats
-	symbol    string
-	soloMode  bool
-	logger    *logging.Logger
+	coin              coin.Coin
+	jobMgr            *JobManager
+	rpcClient         *noderpc.Client
+	stats             *metrics.Stats
+	symbol            string
+	soloMode          bool
+	staleShareGrace   time.Duration // grace period to accept shares after a new block
+	logger            *logging.Logger
+	lastBlockSubmit   time.Time // eCash: time of last block submission
 }
 
 // NewShareValidator creates a new share validator.
-func NewShareValidator(c coin.Coin, jobMgr *JobManager, rpcClient *noderpc.Client, stats *metrics.Stats, soloMode bool) *ShareValidator {
+func NewShareValidator(c coin.Coin, jobMgr *JobManager, rpcClient *noderpc.Client, stats *metrics.Stats, soloMode bool, staleShareGrace time.Duration) *ShareValidator {
 	return &ShareValidator{
-		coin:      c,
-		jobMgr:    jobMgr,
-		rpcClient: rpcClient,
-		stats:     stats,
-		symbol:    c.Symbol(),
-		soloMode:  soloMode,
-		logger:    logging.New(logging.ModuleEngine),
+		coin:            c,
+		jobMgr:          jobMgr,
+		rpcClient:       rpcClient,
+		stats:           stats,
+		symbol:          c.Symbol(),
+		soloMode:        soloMode,
+		staleShareGrace: staleShareGrace,
+		logger:          logging.New(logging.ModuleEngine),
 	}
 }
 
@@ -59,11 +67,16 @@ func (sv *ShareValidator) ValidateShare(session *stratum.Session, share *stratum
 		return stratum.ErrJobNotFound
 	}
 
-	// Check if job is stale (different previous block hash)
+	// Check if job is stale (different previous block hash).
+	// Allow a grace period after a new block so in-flight shares aren't rejected.
 	currentTip := sv.jobMgr.CurrentTip()
 	if jobData.Template.PreviousBlockHash != currentTip {
-		sv.stats.RecordShare(sv.symbol, metrics.ShareStale, share.WorkerName, 0)
-		return stratum.ErrJobNotFound
+		if sv.staleShareGrace > 0 && time.Since(sv.jobMgr.TipChangedAt()) < sv.staleShareGrace {
+			sv.logger.Debug("stale share accepted within grace period: worker=%s job=%s", share.WorkerName, share.JobID)
+		} else {
+			sv.stats.RecordShare(sv.symbol, metrics.ShareStale, share.WorkerName, 0)
+			return stratum.ErrJobNotFound
+		}
 	}
 
 	// Get the correct coinb2 for this session
@@ -199,7 +212,31 @@ func (sv *ShareValidator) ValidateShare(session *stratum.Session, share *stratum
 	nbits, _ := coin.BitsToHex(jobData.Job.NBits)
 	targetBig := coin.CompactToBig(nbits)
 	if coin.HashMeetsTarget(blockHashBE, targetBig) {
-		sv.logger.Info("*** BLOCK FOUND by %s at height %d! *** hash=%s", share.WorkerName, jobData.Template.Height, blockHashHex)
+		sv.logger.Info("*** POTENTIAL BLOCK FOUND by %s at height %d! *** hash=%s", share.WorkerName, jobData.Template.Height, blockHashHex)
+
+		// eCash block cooldown: suppress submissions shortly after a block
+		// to avoid submitting on Avalanche-parked chains
+		if sv.symbol == "XEC" && !sv.lastBlockSubmit.IsZero() {
+			elapsed := time.Since(sv.lastBlockSubmit)
+			if elapsed < ecashBlockCooldown {
+				sv.logger.Warn("eCash block cooldown active (%.0fs remaining) - skipping submission",
+					(ecashBlockCooldown - elapsed).Seconds())
+				return nil
+			}
+		}
+
+		// eCash chain reorg check: verify the chain tip hasn't changed
+		// between when the template was fetched and now
+		if sv.symbol == "XEC" {
+			bestHash, err := sv.rpcClient.GetBestBlockHash()
+			if err != nil {
+				sv.logger.Warn("could not verify chain tip before submission: %v", err)
+			} else if bestHash != jobData.Template.PreviousBlockHash {
+				sv.logger.Warn("eCash chain reorg detected: template prevhash=%s, current tip=%s - skipping submission",
+					jobData.Template.PreviousBlockHash, bestHash)
+				return nil
+			}
+		}
 
 		// RTT (Real Time Target) validation for eCash only
 		if sv.symbol == "XEC" && jobData.Template.RTT != nil {
@@ -229,6 +266,11 @@ func (sv *ShareValidator) ValidateShare(session *stratum.Session, share *stratum
 		if err := sv.rpcClient.SubmitBlock(blockHex); err != nil {
 			sv.logger.Error("submitting block: %v", err)
 			return nil
+		}
+
+		// Record submission time for eCash cooldown
+		if sv.symbol == "XEC" {
+			sv.lastBlockSubmit = time.Now()
 		}
 
 		// Verify submission

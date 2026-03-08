@@ -78,7 +78,7 @@ func (d *DigiByte) ValidateAddress(address, network string) error {
 	return nil
 }
 
-func (d *DigiByte) addressToScript(address, network string) ([]byte, error) {
+func (d *DigiByte) AddressToScript(address, network string) ([]byte, error) {
 	params := d.Params()
 	hrp := params.Bech32HRPMainnet
 	p2pkhVersion := params.P2PKHVersionMainnet
@@ -118,16 +118,22 @@ func (d *DigiByte) addressToScript(address, network string) ([]byte, error) {
 }
 
 func (d *DigiByte) BuildCoinbase(template *noderpc.BlockTemplate, address, network, coinbaseText string,
-	extraNonce1Size, extraNonce2Size int) (string, string, error) {
+	extraNonce1Size, extraNonce2Size int, extraOutputs []coinbase.CoinbaseOutput) (string, string, error) {
 
-	script, err := d.addressToScript(address, network)
+	script, err := d.AddressToScript(address, network)
 	if err != nil {
 		return "", "", fmt.Errorf("building output script: %w", err)
 	}
 
-	outputs := []coinbase.CoinbaseOutput{
-		{Value: template.CoinbaseValue, Script: script},
+	poolValue := template.CoinbaseValue
+	for _, eo := range extraOutputs {
+		poolValue -= eo.Value
 	}
+	outputs := []coinbase.CoinbaseOutput{
+		{Value: poolValue, Script: script},
+	}
+
+	outputs = append(outputs, extraOutputs...)
 
 	// Add witness commitment if present (included in txid format for merkle root correctness)
 	if template.DefaultWitnessCommitment != "" {

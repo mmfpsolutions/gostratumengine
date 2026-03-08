@@ -85,7 +85,7 @@ func (e *ECash) ValidateAddress(address, network string) error {
 	return nil
 }
 
-func (e *ECash) addressToScript(address, network string) ([]byte, error) {
+func (e *ECash) AddressToScript(address, network string) ([]byte, error) {
 	prefix := e.Params().CashAddrPrefix
 	if network == "testnet" {
 		prefix = "ectest"
@@ -121,15 +121,18 @@ func (e *ECash) addressToScript(address, network string) ([]byte, error) {
 }
 
 func (e *ECash) BuildCoinbase(template *noderpc.BlockTemplate, address, network, coinbaseText string,
-	extraNonce1Size, extraNonce2Size int) (string, string, error) {
+	extraNonce1Size, extraNonce2Size int, extraOutputs []coinbase.CoinbaseOutput) (string, string, error) {
 
-	poolScript, err := e.addressToScript(address, network)
+	poolScript, err := e.AddressToScript(address, network)
 	if err != nil {
 		return "", "", fmt.Errorf("building pool output script: %w", err)
 	}
 
 	// Calculate pool reward after mandatory deductions
 	poolReward := e.PoolReward(template)
+	for _, eo := range extraOutputs {
+		poolReward -= eo.Value
+	}
 
 	outputs := []coinbase.CoinbaseOutput{
 		{Value: poolReward, Script: poolScript},
@@ -138,7 +141,7 @@ func (e *ECash) BuildCoinbase(template *noderpc.BlockTemplate, address, network,
 	// Add miner fund output if required by the template (via CoinbaseTxn wrapper)
 	if template.CoinbaseTxn != nil && template.CoinbaseTxn.MinerFund != nil &&
 		len(template.CoinbaseTxn.MinerFund.Addresses) > 0 && template.CoinbaseTxn.MinerFund.MinimumValue > 0 {
-		fundScript, err := e.addressToScript(template.CoinbaseTxn.MinerFund.Addresses[0], network)
+		fundScript, err := e.AddressToScript(template.CoinbaseTxn.MinerFund.Addresses[0], network)
 		if err != nil {
 			return "", "", fmt.Errorf("building miner fund script: %w", err)
 		}
@@ -162,6 +165,8 @@ func (e *ECash) BuildCoinbase(template *noderpc.BlockTemplate, address, network,
 			})
 		}
 	}
+
+	outputs = append(outputs, extraOutputs...)
 
 	// No SegWit for eCash
 	coinb1, coinb2 := coinbase.BuildCoinbaseParts(

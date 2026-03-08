@@ -20,7 +20,15 @@ type Config struct {
 	PoolName string                `json:"pool_name"`
 	LogLevel string                `json:"log_level"`
 	APIPort  int                   `json:"api_port"`
+	Donation DonationConfig        `json:"donation"`
 	Coins    map[string]CoinConfig `json:"coins"`
+}
+
+// DonationConfig holds developer donation settings.
+// A small percentage of block rewards is donated to the project authors.
+type DonationConfig struct {
+	Enabled bool    `json:"enabled"`
+	Percent float64 `json:"percent"` // percentage of block reward (default 1.0)
 }
 
 // CoinConfig holds per-coin configuration.
@@ -46,11 +54,13 @@ type NodeConfig struct {
 
 // StratumConfig holds stratum server settings.
 type StratumConfig struct {
-	Host         string  `json:"host"`
-	Port         int     `json:"port"`
-	Difficulty   float64 `json:"difficulty"`
-	PingEnabled  bool    `json:"ping_enabled"`
-	PingInterval int     `json:"ping_interval"` // seconds between server-sent pings (0 = disabled)
+	Host              string  `json:"host"`
+	Port              int     `json:"port"`
+	Difficulty        float64 `json:"difficulty"`
+	PingEnabled       bool    `json:"ping_enabled"`
+	PingInterval      int     `json:"ping_interval"`       // seconds between server-sent pings (0 = disabled)
+	AcceptSuggestDiff bool    `json:"accept_suggest_diff"` // honor mining.suggest_difficulty from miners
+	StaleShareGrace   int     `json:"stale_share_grace"`   // seconds to accept shares after a new block (default 5)
 }
 
 // MiningConfig holds mining-related settings.
@@ -105,6 +115,10 @@ func applyDefaults(cfg *Config) {
 	if cfg.APIPort == 0 {
 		cfg.APIPort = 8080
 	}
+	if cfg.Donation.Percent == 0 {
+		cfg.Donation.Enabled = true
+		cfg.Donation.Percent = 1.0
+	}
 
 	for symbol, coin := range cfg.Coins {
 		if coin.Node.Host == "" {
@@ -118,6 +132,9 @@ func applyDefaults(cfg *Config) {
 		}
 		if coin.Stratum.PingEnabled && coin.Stratum.PingInterval == 0 {
 			coin.Stratum.PingInterval = 30
+		}
+		if coin.Stratum.StaleShareGrace == 0 {
+			coin.Stratum.StaleShareGrace = 5
 		}
 		if coin.Mining.CoinbaseText == "" {
 			coin.Mining.CoinbaseText = "GoStratumEngine"

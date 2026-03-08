@@ -39,7 +39,7 @@ func New(cfg *config.Config, stats *metrics.Stats) (*Engine, error) {
 			continue
 		}
 
-		runner, err := NewCoinRunner(symbol, coinCfg, stats)
+		runner, err := NewCoinRunner(symbol, coinCfg, cfg.Donation, stats)
 		if err != nil {
 			return nil, fmt.Errorf("initializing %s: %w", symbol, err)
 		}

@@ -13,6 +13,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/mmfpsolutions/gostratumengine/pkg/coinbase"
 	"github.com/mmfpsolutions/gostratumengine/pkg/noderpc"
 )
 
@@ -36,11 +37,15 @@ type Coin interface {
 	// TemplateRules returns the rules to pass to getblocktemplate.
 	TemplateRules() []string
 
+	// AddressToScript converts a coin address to its output script.
+	AddressToScript(address, network string) ([]byte, error)
+
 	// BuildCoinbase constructs the coinbase transaction, split into two halves
 	// (coinb1 and coinb2) with space for extranonce1+extranonce2 between them.
+	// extraOutputs are appended after the pool output (e.g., donation outputs).
 	// Returns hex-encoded halves.
 	BuildCoinbase(template *noderpc.BlockTemplate, address, network, coinbaseText string,
-		extraNonce1Size, extraNonce2Size int) (coinb1, coinb2 string, err error)
+		extraNonce1Size, extraNonce2Size int, extraOutputs []coinbase.CoinbaseOutput) (coinb1, coinb2 string, err error)
 
 	// BuildBlock constructs the full block hex for submission from the solved header,
 	// the full coinbase transaction, and the block template.

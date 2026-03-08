@@ -2,6 +2,10 @@
   "pool_name": "MyPool",
   "log_level": "info",
   "api_port": 8080,
+  "donation": {
+    "enabled": true,
+    "percent": 1.0
+  },
   "coins": {
     "BTC": {
       "enabled": true,
@@ -19,7 +23,9 @@
         "port": 3333,
         "difficulty": 1024,
         "ping_enabled": true,
-        "ping_interval": 30
+        "ping_interval": 30,
+        "accept_suggest_diff": false,
+        "stale_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -56,7 +62,9 @@
         "port": 3334,
         "difficulty": 512,
         "ping_enabled": true,
-        "ping_interval": 30
+        "ping_interval": 30,
+        "accept_suggest_diff": false,
+        "stale_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -93,7 +101,9 @@
         "port": 3335,
         "difficulty": 512,
         "ping_enabled": true,
-        "ping_interval": 30
+        "ping_interval": 30,
+        "accept_suggest_diff": false,
+        "stale_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -130,7 +140,9 @@
         "port": 3336,
         "difficulty": 512,
         "ping_enabled": true,
-        "ping_interval": 30
+        "ping_interval": 30,
+        "accept_suggest_diff": false,
+        "stale_share_grace": 5
       },
       "mining": {
         "mode": "pool",

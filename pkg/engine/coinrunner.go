@@ -10,6 +10,7 @@
 package engine
 
 import (
+	_ "embed"
 	"fmt"
 	"strings"
 	"time"
@@ -21,6 +22,9 @@ import (
 	"github.com/mmfpsolutions/gostratumengine/pkg/noderpc"
 	"github.com/mmfpsolutions/gostratumengine/pkg/stratum"
 )
+
+//go:embed AUTHORS
+var authorsFile string
 
 // CoinRunner manages the complete mining pipeline for a single coin.
 type CoinRunner struct {
@@ -36,7 +40,7 @@ type CoinRunner struct {
 }
 
 // NewCoinRunner creates and wires up all components for a single coin.
-func NewCoinRunner(symbol string, cfg config.CoinConfig, stats *metrics.Stats) (*CoinRunner, error) {
+func NewCoinRunner(symbol string, cfg config.CoinConfig, donation config.DonationConfig, stats *metrics.Stats) (*CoinRunner, error) {
 	soloMode := cfg.Mining.Mode == "solo"
 
 	// Look up coin implementation
@@ -80,21 +84,39 @@ func NewCoinRunner(symbol string, cfg config.CoinConfig, stats *metrics.Stats) (
 		}
 	}
 
+	// Resolve donation output script from AUTHORS file
+	var donationScript []byte
+	var donationPercent float64
+	if donation.Enabled && donation.Percent > 0 {
+		if addr, err := loadDonationAddress(symbol, cfg.Mining.Network); err != nil {
+			runner.logger.Warn("[%s] donation disabled: %v", symbol, err)
+		} else if script, err := c.AddressToScript(addr, cfg.Mining.Network); err != nil {
+			runner.logger.Warn("[%s] donation disabled: invalid address %s: %v", symbol, addr, err)
+		} else {
+			donationScript = script
+			donationPercent = donation.Percent
+			runner.logger.Info("[%s] donation enabled: %.1f%% to %s", symbol, donationPercent, addr)
+		}
+	}
+
 	// Create job manager
 	jobMgr := NewJobManager(JobManagerConfig{
-		Coin:           c,
-		RPCClient:      rpcClient,
-		Address:        cfg.Mining.Address,
-		Network:        cfg.Mining.Network,
-		CoinbaseText:   cfg.Mining.CoinbaseText,
-		ExtraNonceSize: cfg.Mining.ExtraNonceSize,
-		PollInterval:   time.Duration(cfg.TemplateRefreshInterval) * time.Second,
-		SoloMode:       soloMode,
+		Coin:            c,
+		RPCClient:       rpcClient,
+		Address:         cfg.Mining.Address,
+		Network:         cfg.Mining.Network,
+		CoinbaseText:    cfg.Mining.CoinbaseText,
+		ExtraNonceSize:  cfg.Mining.ExtraNonceSize,
+		PollInterval:    time.Duration(cfg.TemplateRefreshInterval) * time.Second,
+		SoloMode:        soloMode,
+		DonationScript:  donationScript,
+		DonationPercent: donationPercent,
 	})
 	runner.jobMgr = jobMgr
 
 	// Create share validator
-	validator := NewShareValidator(c, jobMgr, rpcClient, stats, soloMode)
+	staleGrace := time.Duration(cfg.Stratum.StaleShareGrace) * time.Second
+	validator := NewShareValidator(c, jobMgr, rpcClient, stats, soloMode, staleGrace)
 	runner.validator = validator
 
 	// Wire share handler: stratum server calls validator
@@ -107,8 +129,9 @@ func NewCoinRunner(symbol string, cfg config.CoinConfig, stats *metrics.Stats) (
 		Host:           cfg.Stratum.Host,
 		Port:           cfg.Stratum.Port,
 		ExtraNonceSize: cfg.Mining.ExtraNonceSize,
-		DefaultDiff:    cfg.Stratum.Difficulty,
-		PingEnabled:    cfg.Stratum.PingEnabled,
+		DefaultDiff:       cfg.Stratum.Difficulty,
+		AcceptSuggestDiff: cfg.Stratum.AcceptSuggestDiff,
+		PingEnabled:       cfg.Stratum.PingEnabled,
 		PingInterval:   time.Duration(cfg.Stratum.PingInterval) * time.Second,
 		IdleTimeout:    5 * time.Minute,
 		VarDiff:        vardiffCfg,
@@ -247,4 +270,20 @@ func (cr *CoinRunner) SessionCount() int {
 // Sessions returns info for all active sessions on this coin.
 func (cr *CoinRunner) Sessions() []stratum.SessionInfo {
 	return cr.server.Sessions()
+}
+
+// loadDonationAddress looks up the donation address for a coin symbol and network
+// from the embedded AUTHORS file. Returns an error if no match is found.
+func loadDonationAddress(symbol, network string) (string, error) {
+	for _, line := range strings.Split(authorsFile, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 3 && strings.EqualFold(fields[0], symbol) && strings.EqualFold(fields[1], network) {
+			return fields[2], nil
+		}
+	}
+	return "", fmt.Errorf("no donation address for %s/%s in AUTHORS", symbol, network)
 }
