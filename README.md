@@ -52,13 +52,36 @@ These protections are critical for eCash mining. Without RTT validation and Aval
 
 ### From Release
 
-Download the latest binary from [Releases](https://github.com/mmfpsolutions/gostratumengine/releases), then:
+Download the latest binary for your platform:
 
 ```bash
+# Linux (amd64)
+curl -LO https://github.com/mmfpsolutions/gostratumengine/releases/latest/download/gostratumengine-linux-amd64
+chmod +x gostratumengine-linux-amd64
+
+# Linux (arm64)
+curl -LO https://github.com/mmfpsolutions/gostratumengine/releases/latest/download/gostratumengine-linux-arm64
+chmod +x gostratumengine-linux-arm64
+
+# macOS (Apple Silicon)
+curl -LO https://github.com/mmfpsolutions/gostratumengine/releases/latest/download/gostratumengine-darwin-arm64
+chmod +x gostratumengine-darwin-arm64
+
+# macOS (Intel)
+curl -LO https://github.com/mmfpsolutions/gostratumengine/releases/latest/download/gostratumengine-darwin-amd64
+chmod +x gostratumengine-darwin-amd64
+```
+
+Then configure and run:
+
+```bash
+curl -LO https://github.com/mmfpsolutions/gostratumengine/releases/latest/download/config.example.json
 cp config.example.json config.json
 # Edit config.json with your node and mining settings
-./gostratumengine
+./gostratumengine-linux-amd64
 ```
+
+All releases are available at [Releases](https://github.com/mmfpsolutions/gostratumengine/releases).
 
 ### From Source
 
