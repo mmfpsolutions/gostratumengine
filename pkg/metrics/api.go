@@ -76,9 +76,9 @@ func (a *APIServer) SetSessionProvider(sp SessionProvider) {
 // Start begins serving the metrics API.
 func (a *APIServer) Start() error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/stats", a.handleStats)
-	mux.HandleFunc("/miners", a.handleMiners)
-	mux.HandleFunc("/health", a.handleHealth)
+	mux.HandleFunc("/api/v1/stats", a.handleStats)
+	mux.HandleFunc("/api/v1/miners", a.handleMiners)
+	mux.HandleFunc("/api/v1/health", a.handleHealth)
 
 	a.server = &http.Server{
 		Addr:    fmt.Sprintf(":%d", a.port),

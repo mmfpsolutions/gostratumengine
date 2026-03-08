@@ -131,8 +131,9 @@ Copy `config.example.json` to `config.json` and edit for your setup. Key section
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /stats` | Pool-wide statistics (shares, blocks, uptime) |
-| `GET /miners` | Per-worker stats and live session info |
+| `GET /api/v1/stats` | Pool-wide statistics (shares, blocks, uptime) |
+| `GET /api/v1/miners` | Per-worker stats and live session info |
+| `GET /api/v1/health` | Health check |
 
 ## Build Targets
 
