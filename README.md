@@ -6,7 +6,7 @@ GoStratumEngine is provided free of charge under the GPLv3 license. By default, 
 
 ## Features
 
-- **Multi-coin support** — BTC, BCH, DGB, and XEC
+- **Multi-coin support** — BTC, BC2, BCH, DGB, and XEC
 - **Pool and Solo mining modes** — pool mode uses a single payout address; solo mode lets each miner provide their own wallet address
 - **Variable Difficulty (VarDiff)** — automatically adjusts per-miner difficulty based on hashrate, sent with job updates (not mid-share)
 - **Stale share grace period** — configurable window (default 5s) to accept in-flight shares after a new block
@@ -123,7 +123,7 @@ Copy `config.example.json` to `config.json` and edit for your setup. Key section
 
 ### Mining Modes
 
-**Pool mode** (`"mode": "pool"`) — All miners share a single payout address configured in `mining.address`. Traditional pool operation.
+**Pool mode** (`"mode": "pool"`) — All block rewards are sent to a single payout address configured in `mining.address`. GoStratumEngine does not include a payout system — reward distribution to individual miners must be handled externally.
 
 **Solo mode** (`"mode": "solo"`) — Each miner provides their wallet address as their worker name (e.g., `bc1qxyz.worker1`). Block rewards go directly to the miner's address. No `mining.address` needed.
 
@@ -162,7 +162,7 @@ pkg/
 ## Requirements
 
 - Go 1.25+ (for building from source)
-- A full node for each coin you want to mine (Bitcoin Core, DigiByte Core, Bitcoin Cash Node, Bitcoin ABC)
+- A full node for each coin you want to mine (Bitcoin Core, Bitcoin II Core, DigiByte Core, Bitcoin Cash Node, Bitcoin ABC)
 - ZMQ enabled on your node (recommended for instant block detection)
 
 ## Donation

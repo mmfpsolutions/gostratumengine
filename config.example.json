@@ -124,6 +124,45 @@
       },
       "template_refresh_interval": 5
     },
+    "BC2": {
+      "enabled": false,
+      "coin_type": "bitcoinii",
+      "node": {
+        "host": "127.0.0.1",
+        "port": 8337,
+        "username": "rpcuser",
+        "password": "rpcpassword",
+        "zmq_enabled": false,
+        "zmq_hashblock": ""
+      },
+      "stratum": {
+        "host": "0.0.0.0",
+        "port": 3337,
+        "difficulty": 1024,
+        "ping_enabled": true,
+        "ping_interval": 30,
+        "accept_suggest_diff": false,
+        "stale_share_grace": 5
+      },
+      "mining": {
+        "mode": "pool",
+        "address": "bc1qYOURADDRESSHERE",
+        "network": "mainnet",
+        "coinbase_text": "MyPool/GoStratumEngine",
+        "extranonce_size": 8
+      },
+      "vardiff": {
+        "enabled": true,
+        "min_diff": 512,
+        "max_diff": 32768,
+        "target_time": 15,
+        "retarget_time": 300,
+        "variance_percent": 30,
+        "float_diff": false,
+        "float_precision": 2
+      },
+      "template_refresh_interval": 5
+    },
     "XEC": {
       "enabled": false,
       "coin_type": "ecash",
