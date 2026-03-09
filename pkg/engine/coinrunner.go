@@ -43,6 +43,11 @@ type CoinRunner struct {
 func NewCoinRunner(symbol string, cfg config.CoinConfig, donation config.DonationConfig, stats *metrics.Stats) (*CoinRunner, error) {
 	soloMode := cfg.Mining.Mode == "solo"
 
+	// Register generic coin from definition if coin_type is not built-in
+	if _, err := coin.Get(cfg.CoinType); err != nil && cfg.CoinDefinition != nil {
+		coin.Register(cfg.CoinType, coin.NewGenericCoin(cfg.CoinType, *cfg.CoinDefinition))
+	}
+
 	// Look up coin implementation
 	c, err := coin.Get(cfg.CoinType)
 	if err != nil {
@@ -116,7 +121,8 @@ func NewCoinRunner(symbol string, cfg config.CoinConfig, donation config.Donatio
 
 	// Create share validator
 	staleGrace := time.Duration(cfg.Stratum.StaleShareGrace) * time.Second
-	validator := NewShareValidator(c, jobMgr, rpcClient, stats, soloMode, staleGrace)
+	lowDiffGrace := time.Duration(cfg.Stratum.LowDiffShareGrace) * time.Second
+	validator := NewShareValidator(c, jobMgr, rpcClient, stats, soloMode, staleGrace, lowDiffGrace)
 	runner.validator = validator
 
 	// Wire share handler: stratum server calls validator
@@ -134,7 +140,8 @@ func NewCoinRunner(symbol string, cfg config.CoinConfig, donation config.Donatio
 		PingEnabled:       cfg.Stratum.PingEnabled,
 		PingInterval:   time.Duration(cfg.Stratum.PingInterval) * time.Second,
 		IdleTimeout:    5 * time.Minute,
-		VarDiff:        vardiffCfg,
+		VarDiff:           vardiffCfg,
+		VarDiffOnNewBlock: cfg.VarDiff.OnNewBlock == nil || *cfg.VarDiff.OnNewBlock,
 	}
 
 	// Solo mode: set up authorize, job-for-session, and disconnect handlers

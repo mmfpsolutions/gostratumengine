@@ -49,6 +49,7 @@ type Server struct {
 	pingInterval         time.Duration
 	idleTimeout          time.Duration
 	vardiffCfg           *VarDiffConfig
+	vardiffOnNewBlock    bool
 	logger               *logging.Logger
 	extraNonceSeq        atomic.Uint32
 	pingIDSeq            atomic.Uint64
@@ -67,6 +68,7 @@ type ServerConfig struct {
 	PingInterval         time.Duration
 	IdleTimeout          time.Duration
 	VarDiff              *VarDiffConfig
+	VarDiffOnNewBlock    bool
 	AuthorizeHandler     AuthorizeHandler
 	JobForSessionHandler JobForSessionHandler
 	OnSessionRemoved     func(session *Session)
@@ -91,6 +93,7 @@ func NewServer(cfg ServerConfig, shareHandler ShareHandler) *Server {
 		pingInterval:         cfg.PingInterval,
 		idleTimeout:          cfg.IdleTimeout,
 		vardiffCfg:           cfg.VarDiff,
+		vardiffOnNewBlock:    cfg.VarDiffOnNewBlock,
 		logger:               logging.New(logging.ModuleStratum),
 		shutdownCh:           make(chan struct{}),
 	}

@@ -11,6 +11,7 @@ package coin
 
 import (
 	"fmt"
+	"regexp"
 	"sync"
 
 	"github.com/mmfpsolutions/gostratumengine/pkg/coinbase"
@@ -104,4 +105,96 @@ func List() []string {
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// CoinDefinition describes a user-defined SHA256d coin for generic registration.
+// Used inline in config.json when coin_type is not a built-in.
+type CoinDefinition struct {
+	Name    string        `json:"name"`
+	Symbol  string        `json:"symbol"`
+	Segwit  bool          `json:"segwit"`
+	Address AddressConfig `json:"address"`
+}
+
+// AddressConfig defines address formats for a coin definition.
+type AddressConfig struct {
+	Base58 *Base58Config `json:"base58"`
+	Bech32 *Bech32Config `json:"bech32,omitempty"`
+}
+
+// Base58Config defines Base58Check address version bytes.
+type Base58Config struct {
+	P2PKH NetworkVersions  `json:"p2pkh"`
+	P2SH  *NetworkVersions `json:"p2sh,omitempty"`
+}
+
+// NetworkVersions defines version bytes for mainnet and testnet.
+type NetworkVersions struct {
+	Mainnet int `json:"mainnet"`
+	Testnet int `json:"testnet"`
+}
+
+// Bech32Config defines Bech32 address parameters.
+type Bech32Config struct {
+	HRP NetworkHRP `json:"hrp"`
+}
+
+// NetworkHRP defines human-readable parts for mainnet and testnet.
+type NetworkHRP struct {
+	Mainnet string `json:"mainnet"`
+	Testnet string `json:"testnet"`
+}
+
+var (
+	coinTypeRe = regexp.MustCompile(`^[a-z][a-z0-9]*$`)
+	symbolRe   = regexp.MustCompile(`^[A-Z0-9]+$`)
+)
+
+// ValidateCoinDefinition validates a user-provided coin definition.
+func ValidateCoinDefinition(coinType string, def *CoinDefinition) error {
+	if !coinTypeRe.MatchString(coinType) {
+		return fmt.Errorf("coin_type %q must be lowercase alphanumeric", coinType)
+	}
+	if def.Name == "" {
+		return fmt.Errorf("coin_type %q: name is required", coinType)
+	}
+	if len(def.Symbol) < 2 || len(def.Symbol) > 10 || !symbolRe.MatchString(def.Symbol) {
+		return fmt.Errorf("coin_type %q: symbol must be 2-10 uppercase characters, got %q", coinType, def.Symbol)
+	}
+	if def.Address.Base58 == nil {
+		return fmt.Errorf("coin_type %q: address.base58 is required", coinType)
+	}
+	if err := validateVersionByte(def.Address.Base58.P2PKH.Mainnet, coinType, "p2pkh.mainnet"); err != nil {
+		return err
+	}
+	if err := validateVersionByte(def.Address.Base58.P2PKH.Testnet, coinType, "p2pkh.testnet"); err != nil {
+		return err
+	}
+	if def.Address.Base58.P2SH != nil {
+		if err := validateVersionByte(def.Address.Base58.P2SH.Mainnet, coinType, "p2sh.mainnet"); err != nil {
+			return err
+		}
+		if err := validateVersionByte(def.Address.Base58.P2SH.Testnet, coinType, "p2sh.testnet"); err != nil {
+			return err
+		}
+	}
+	if def.Segwit {
+		if def.Address.Bech32 == nil {
+			return fmt.Errorf("coin_type %q: address.bech32 is required when segwit is true", coinType)
+		}
+		if def.Address.Bech32.HRP.Mainnet == "" {
+			return fmt.Errorf("coin_type %q: bech32 hrp mainnet is required", coinType)
+		}
+		if def.Address.Bech32.HRP.Testnet == "" {
+			return fmt.Errorf("coin_type %q: bech32 hrp testnet is required", coinType)
+		}
+	}
+	return nil
+}
+
+func validateVersionByte(v int, coinType, field string) error {
+	if v < 0 || v > 255 {
+		return fmt.Errorf("coin_type %q: %s must be 0-255, got %d", coinType, field, v)
+	}
+	return nil
 }

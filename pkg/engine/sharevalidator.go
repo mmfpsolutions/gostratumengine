@@ -38,21 +38,23 @@ type ShareValidator struct {
 	symbol            string
 	soloMode          bool
 	staleShareGrace   time.Duration // grace period to accept shares after a new block
+	lowDiffShareGrace time.Duration // grace period to accept shares at previous diff after a change
 	logger            *logging.Logger
 	lastBlockSubmit   time.Time // eCash: time of last block submission
 }
 
 // NewShareValidator creates a new share validator.
-func NewShareValidator(c coin.Coin, jobMgr *JobManager, rpcClient *noderpc.Client, stats *metrics.Stats, soloMode bool, staleShareGrace time.Duration) *ShareValidator {
+func NewShareValidator(c coin.Coin, jobMgr *JobManager, rpcClient *noderpc.Client, stats *metrics.Stats, soloMode bool, staleShareGrace, lowDiffShareGrace time.Duration) *ShareValidator {
 	return &ShareValidator{
-		coin:            c,
-		jobMgr:          jobMgr,
-		rpcClient:       rpcClient,
-		stats:           stats,
-		symbol:          c.Symbol(),
-		soloMode:        soloMode,
-		staleShareGrace: staleShareGrace,
-		logger:          logging.New(logging.ModuleEngine),
+		coin:              c,
+		jobMgr:            jobMgr,
+		rpcClient:         rpcClient,
+		stats:             stats,
+		symbol:            c.Symbol(),
+		soloMode:          soloMode,
+		staleShareGrace:   staleShareGrace,
+		lowDiffShareGrace: lowDiffShareGrace,
+		logger:            logging.New(logging.ModuleEngine),
 	}
 }
 
@@ -199,9 +201,24 @@ func (sv *ShareValidator) ValidateShare(session *stratum.Session, share *stratum
 	// Check pool difficulty
 	sessionDiff := session.GetDifficulty()
 	if !coin.HashMeetsDifficulty(blockHashBE, sessionDiff) {
-		sv.logger.Debug("share rejected: worker=%s required=%g actual=%g hash=%s", share.WorkerName, sessionDiff, actualDiff, blockHashHex)
-		sv.stats.RecordShare(sv.symbol, metrics.ShareInvalid, share.WorkerName, actualDiff)
-		return stratum.ErrLowDifficulty
+		// Grace period: accept shares at the previous difficulty for a short window
+		// after a difficulty change (covers suggest_difficulty, vardiff, password diff)
+		accepted := false
+		if sv.lowDiffShareGrace > 0 {
+			prevDiff, changedAt := session.GetPrevDifficulty()
+			if prevDiff > 0 && time.Since(changedAt) < sv.lowDiffShareGrace {
+				if coin.HashMeetsDifficulty(blockHashBE, prevDiff) {
+					sv.logger.Debug("low-diff share accepted within grace period: worker=%s diff=%g prevDiff=%g currentDiff=%g",
+						share.WorkerName, actualDiff, prevDiff, sessionDiff)
+					accepted = true
+				}
+			}
+		}
+		if !accepted {
+			sv.logger.Debug("share rejected: worker=%s required=%g actual=%g hash=%s", share.WorkerName, sessionDiff, actualDiff, blockHashHex)
+			sv.stats.RecordShare(sv.symbol, metrics.ShareInvalid, share.WorkerName, actualDiff)
+			return stratum.ErrLowDifficulty
+		}
 	}
 
 	// Share is valid at pool difficulty

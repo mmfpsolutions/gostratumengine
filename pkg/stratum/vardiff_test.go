@@ -25,7 +25,7 @@ func TestVarDiffNoRetargetBeforeMinShares(t *testing.T) {
 
 	// Less than 4 shares should never retarget
 	for i := 0; i < 3; i++ {
-		if newDiff := vd.RecordShare(); newDiff != 0 {
+		if result := vd.RecordShare(); result.Adjusted {
 			t.Errorf("retarget happened with only %d shares", i+1)
 		}
 	}
@@ -50,9 +50,9 @@ func TestVarDiffClampToMax(t *testing.T) {
 	}
 	vd.lastRetarget = now.Add(-1 * time.Hour)
 
-	newDiff := vd.RecordShare()
-	if newDiff > 2048 {
-		t.Errorf("difficulty %f exceeds max 2048", newDiff)
+	result := vd.RecordShare()
+	if result.ClampedDiff > 2048 {
+		t.Errorf("difficulty %f exceeds max 2048", result.ClampedDiff)
 	}
 }
 
@@ -75,9 +75,9 @@ func TestVarDiffClampToMin(t *testing.T) {
 	}
 	vd.lastRetarget = now.Add(-1 * time.Hour)
 
-	newDiff := vd.RecordShare()
-	if newDiff != 0 && newDiff < 512 {
-		t.Errorf("difficulty %f below min 512", newDiff)
+	result := vd.RecordShare()
+	if result.Adjusted && result.ClampedDiff < 512 {
+		t.Errorf("difficulty %f below min 512", result.ClampedDiff)
 	}
 }
 
@@ -114,8 +114,8 @@ func TestVarDiffFloatMode(t *testing.T) {
 	}
 	vd.lastRetarget = now.Add(-1 * time.Hour)
 
-	newDiff := vd.RecordShare()
-	if newDiff != 0 && newDiff < 0.01 {
-		t.Errorf("float diff %f below min 0.01", newDiff)
+	result := vd.RecordShare()
+	if result.Adjusted && result.ClampedDiff < 0.01 {
+		t.Errorf("float diff %f below min 0.01", result.ClampedDiff)
 	}
 }

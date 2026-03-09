@@ -25,7 +25,8 @@
         "ping_enabled": true,
         "ping_interval": 30,
         "accept_suggest_diff": false,
-        "stale_share_grace": 5
+        "stale_share_grace": 5,
+        "low_diff_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -42,7 +43,8 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
-        "float_precision": 2
+        "float_precision": 2,
+        "on_new_block": true
       },
       "template_refresh_interval": 5
     },
@@ -64,7 +66,8 @@
         "ping_enabled": true,
         "ping_interval": 30,
         "accept_suggest_diff": false,
-        "stale_share_grace": 5
+        "stale_share_grace": 5,
+        "low_diff_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -81,7 +84,8 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
-        "float_precision": 2
+        "float_precision": 2,
+        "on_new_block": true
       },
       "template_refresh_interval": 5
     },
@@ -103,7 +107,8 @@
         "ping_enabled": true,
         "ping_interval": 30,
         "accept_suggest_diff": false,
-        "stale_share_grace": 5
+        "stale_share_grace": 5,
+        "low_diff_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -120,7 +125,8 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
-        "float_precision": 2
+        "float_precision": 2,
+        "on_new_block": true
       },
       "template_refresh_interval": 5
     },
@@ -142,7 +148,8 @@
         "ping_enabled": true,
         "ping_interval": 30,
         "accept_suggest_diff": false,
-        "stale_share_grace": 5
+        "stale_share_grace": 5,
+        "low_diff_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -159,7 +166,8 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
-        "float_precision": 2
+        "float_precision": 2,
+        "on_new_block": true
       },
       "template_refresh_interval": 5
     },
@@ -181,7 +189,8 @@
         "ping_enabled": true,
         "ping_interval": 30,
         "accept_suggest_diff": false,
-        "stale_share_grace": 5
+        "stale_share_grace": 5,
+        "low_diff_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -198,7 +207,66 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
-        "float_precision": 2
+        "float_precision": 2,
+        "on_new_block": true
+      },
+      "template_refresh_interval": 5
+    },
+    "FB": {
+      "enabled": false,
+      "coin_type": "fractal",
+      "coin_definition": {
+        "name": "Fractal Bitcoin",
+        "symbol": "FB",
+        "segwit": true,
+        "address": {
+          "bech32": {
+            "hrp": {
+              "mainnet": "bc",
+              "testnet": "tb"
+            }
+          },
+          "base58": {
+            "p2pkh": { "mainnet": 0, "testnet": 111 },
+            "p2sh": { "mainnet": 5, "testnet": 196 }
+          }
+        }
+      },
+      "node": {
+        "host": "127.0.0.1",
+        "port": 8332,
+        "username": "rpcuser",
+        "password": "rpcpassword",
+        "zmq_enabled": false,
+        "zmq_hashblock": ""
+      },
+      "stratum": {
+        "host": "0.0.0.0",
+        "port": 3338,
+        "difficulty": 1024,
+        "ping_enabled": true,
+        "ping_interval": 30,
+        "accept_suggest_diff": false,
+        "stale_share_grace": 5,
+        "low_diff_share_grace": 5
+      },
+      "mining": {
+        "mode": "pool",
+        "address": "bc1qYOURADDRESSHERE",
+        "network": "mainnet",
+        "coinbase_text": "MyPool/GoStratumEngine",
+        "extranonce_size": 8
+      },
+      "vardiff": {
+        "enabled": true,
+        "min_diff": 512,
+        "max_diff": 32768,
+        "target_time": 15,
+        "retarget_time": 300,
+        "variance_percent": 30,
+        "float_diff": false,
+        "float_precision": 2,
+        "on_new_block": true
       },
       "template_refresh_interval": 5
     }

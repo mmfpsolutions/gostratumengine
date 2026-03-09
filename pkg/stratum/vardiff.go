@@ -10,9 +10,35 @@
 package stratum
 
 import (
+	"fmt"
 	"math"
 	"time"
 )
+
+// VarDiffResult holds the outcome of a retarget check for diagnostic logging.
+type VarDiffResult struct {
+	Adjusted    bool    // whether difficulty was changed
+	Reason      string  // "adjusted", "within_variance", "min_shares", "retarget_wait"
+	Shares      int     // number of shares in window
+	AvgTime     float64 // average seconds between shares
+	TargetTime  float64 // target seconds between shares
+	AcceptLow   float64 // lower bound of acceptable range
+	AcceptHigh  float64 // upper bound of acceptable range
+	CurrentDiff float64 // difficulty before adjustment
+	CalcDiff    float64 // raw calculated difficulty (before clamping)
+	ClampedDiff float64 // final difficulty (after clamping/rounding)
+	ChangePct   float64 // percentage change
+}
+
+// DiagString returns a GSS-style diagnostic string for logging.
+func (r VarDiffResult) DiagString() string {
+	if r.Reason == "min_shares" || r.Reason == "retarget_wait" {
+		return ""
+	}
+	return fmt.Sprintf("shares=%d avgTime=%.2fs target=%.0fs acceptable=[%.1f-%.1f] actualDiff=%.4f calcDiff=%.4f clampedDiff=%.4f change=%.1f%%",
+		r.Shares, r.AvgTime, r.TargetTime, r.AcceptLow, r.AcceptHigh,
+		r.CurrentDiff, r.CalcDiff, r.ClampedDiff, r.ChangePct*100)
+}
 
 // VarDiff manages variable difficulty for a single miner session.
 type VarDiff struct {
@@ -63,9 +89,18 @@ func (v *VarDiff) CurrentDiff() float64 {
 	return v.currentDiff
 }
 
-// RecordShare records a share submission timestamp and returns a new difficulty
-// if a retarget is needed, or 0 if no change.
-func (v *VarDiff) RecordShare() float64 {
+// ResetWindow clears the share timestamp window and retarget timer.
+// Called after a pending difficulty change is delivered so the new difficulty
+// starts with a clean measurement window.
+func (v *VarDiff) ResetWindow(newDiff float64) {
+	v.currentDiff = newDiff
+	v.shareTimes = v.shareTimes[:0]
+	v.lastRetarget = time.Now()
+}
+
+// RecordShare records a share submission timestamp and returns a VarDiffResult
+// describing the retarget decision. Result.Adjusted indicates if difficulty changed.
+func (v *VarDiff) RecordShare() VarDiffResult {
 	now := time.Now()
 
 	v.shareTimes = append(v.shareTimes, now)
@@ -75,25 +110,38 @@ func (v *VarDiff) RecordShare() float64 {
 
 	// Need at least 4 shares and retargetTime elapsed
 	if len(v.shareTimes) < 4 {
-		return 0
+		return VarDiffResult{Reason: "min_shares"}
 	}
 
 	elapsed := now.Sub(v.lastRetarget).Seconds()
 	if elapsed < v.retargetTime {
-		return 0
+		return VarDiffResult{Reason: "retarget_wait"}
 	}
 
 	// Calculate average time between shares
 	avgTime := v.averageShareTime()
 	if avgTime <= 0 {
-		return 0
+		return VarDiffResult{Reason: "retarget_wait"}
 	}
+
+	acceptLow := v.targetTime * (1 - v.variancePct)
+	acceptHigh := v.targetTime * (1 + v.variancePct)
 
 	// Check if within acceptable variance
 	variance := math.Abs(avgTime-v.targetTime) / v.targetTime
 	if variance <= v.variancePct {
 		v.lastRetarget = now
-		return 0
+		return VarDiffResult{
+			Reason:      "within_variance",
+			Shares:      len(v.shareTimes),
+			AvgTime:     avgTime,
+			TargetTime:  v.targetTime,
+			AcceptLow:   acceptLow,
+			AcceptHigh:  acceptHigh,
+			CurrentDiff: v.currentDiff,
+			CalcDiff:    v.currentDiff,
+			ClampedDiff: v.currentDiff,
+		}
 	}
 
 	// Calculate adjustment ratio
@@ -107,7 +155,8 @@ func (v *VarDiff) RecordShare() float64 {
 		ratio = 0.25
 	}
 
-	newDiff := v.currentDiff * ratio
+	calcDiff := v.currentDiff * ratio
+	newDiff := calcDiff
 
 	// Apply min/max bounds
 	if newDiff < v.minDiff {
@@ -133,14 +182,38 @@ func (v *VarDiff) RecordShare() float64 {
 	change := math.Abs(newDiff-v.currentDiff) / v.currentDiff
 	if change < 0.01 {
 		v.lastRetarget = now
-		return 0
+		return VarDiffResult{
+			Reason:      "within_variance",
+			Shares:      len(v.shareTimes),
+			AvgTime:     avgTime,
+			TargetTime:  v.targetTime,
+			AcceptLow:   acceptLow,
+			AcceptHigh:  acceptHigh,
+			CurrentDiff: v.currentDiff,
+			CalcDiff:    calcDiff,
+			ClampedDiff: newDiff,
+			ChangePct:   change,
+		}
 	}
 
+	oldDiff := v.currentDiff
 	v.currentDiff = newDiff
 	v.lastRetarget = now
 	v.shareTimes = v.shareTimes[:0] // reset share window
 
-	return newDiff
+	return VarDiffResult{
+		Adjusted:    true,
+		Reason:      "adjusted",
+		Shares:      0, // reset, so report what we had
+		AvgTime:     avgTime,
+		TargetTime:  v.targetTime,
+		AcceptLow:   acceptLow,
+		AcceptHigh:  acceptHigh,
+		CurrentDiff: oldDiff,
+		CalcDiff:    calcDiff,
+		ClampedDiff: newDiff,
+		ChangePct:   change,
+	}
 }
 
 func (v *VarDiff) averageShareTime() float64 {

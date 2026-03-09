@@ -13,6 +13,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+
+	coinpkg "github.com/mmfpsolutions/gostratumengine/pkg/coin"
 )
 
 // Config is the top-level configuration for GoStratumEngine.
@@ -33,13 +35,14 @@ type DonationConfig struct {
 
 // CoinConfig holds per-coin configuration.
 type CoinConfig struct {
-	Enabled                 bool          `json:"enabled"`
-	CoinType                string        `json:"coin_type"`
-	Node                    NodeConfig    `json:"node"`
-	Stratum                 StratumConfig `json:"stratum"`
-	Mining                  MiningConfig  `json:"mining"`
-	VarDiff                 VarDiffConfig `json:"vardiff"`
-	TemplateRefreshInterval int           `json:"template_refresh_interval"`
+	Enabled                 bool                 `json:"enabled"`
+	CoinType                string               `json:"coin_type"`
+	CoinDefinition          *coinpkg.CoinDefinition `json:"coin_definition,omitempty"`
+	Node                    NodeConfig           `json:"node"`
+	Stratum                 StratumConfig        `json:"stratum"`
+	Mining                  MiningConfig         `json:"mining"`
+	VarDiff                 VarDiffConfig        `json:"vardiff"`
+	TemplateRefreshInterval int                  `json:"template_refresh_interval"`
 }
 
 // NodeConfig holds blockchain node connection settings.
@@ -60,7 +63,8 @@ type StratumConfig struct {
 	PingEnabled       bool    `json:"ping_enabled"`
 	PingInterval      int     `json:"ping_interval"`       // seconds between server-sent pings (0 = disabled)
 	AcceptSuggestDiff bool    `json:"accept_suggest_diff"` // honor mining.suggest_difficulty from miners
-	StaleShareGrace   int     `json:"stale_share_grace"`   // seconds to accept shares after a new block (default 5)
+	StaleShareGrace       int `json:"stale_share_grace"`        // seconds to accept shares after a new block (default 5)
+	LowDiffShareGrace     int `json:"low_diff_share_grace"`     // seconds to accept shares at previous diff after a change (default 5)
 }
 
 // MiningConfig holds mining-related settings.
@@ -82,6 +86,7 @@ type VarDiffConfig struct {
 	VariancePct    float64 `json:"variance_percent"`
 	FloatDiff      bool    `json:"float_diff"`
 	FloatPrecision int     `json:"float_precision"`
+	OnNewBlock     *bool   `json:"on_new_block,omitempty"` // only apply vardiff on clean jobs (default true)
 }
 
 // Load reads a JSON config file and returns a validated Config.
@@ -136,6 +141,9 @@ func applyDefaults(cfg *Config) {
 		if coin.Stratum.StaleShareGrace == 0 {
 			coin.Stratum.StaleShareGrace = 5
 		}
+		if coin.Stratum.LowDiffShareGrace == 0 {
+			coin.Stratum.LowDiffShareGrace = 5
+		}
 		if coin.Mining.CoinbaseText == "" {
 			coin.Mining.CoinbaseText = "GoStratumEngine"
 		}
@@ -171,6 +179,10 @@ func applyDefaults(cfg *Config) {
 		if coin.VarDiff.FloatPrecision == 0 {
 			coin.VarDiff.FloatPrecision = 2
 		}
+		if coin.VarDiff.OnNewBlock == nil {
+			t := true
+			coin.VarDiff.OnNewBlock = &t
+		}
 
 		cfg.Coins[symbol] = coin
 	}
@@ -190,6 +202,16 @@ func validate(cfg *Config) error {
 
 		if coin.CoinType == "" {
 			return fmt.Errorf("coin %s: coin_type is required", symbol)
+		}
+
+		// Validate coin_definition for non-built-in coin types
+		if _, err := coinpkg.Get(coin.CoinType); err != nil {
+			if coin.CoinDefinition == nil {
+				return fmt.Errorf("coin %s: coin_type %q is not built-in; coin_definition is required", symbol, coin.CoinType)
+			}
+			if err := coinpkg.ValidateCoinDefinition(coin.CoinType, coin.CoinDefinition); err != nil {
+				return fmt.Errorf("coin %s: %w", symbol, err)
+			}
 		}
 		if coin.Node.Port == 0 {
 			return fmt.Errorf("coin %s: node port is required", symbol)

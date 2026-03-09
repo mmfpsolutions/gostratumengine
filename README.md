@@ -6,10 +6,11 @@ GoStratumEngine is provided free of charge under the GPLv3 license. By default, 
 
 ## Features
 
-- **Multi-coin support** — BTC, BC2, BCH, DGB, and XEC
+- **Multi-coin support** — BTC, BC2, BCH, DGB, XEC, plus any SHA256d coin via generic coin definitions
 - **Pool and Solo mining modes** — pool mode uses a single payout address; solo mode lets each miner provide their own wallet address
 - **Variable Difficulty (VarDiff)** — automatically adjusts per-miner difficulty based on hashrate, sent with job updates (not mid-share)
 - **Stale share grace period** — configurable window (default 5s) to accept in-flight shares after a new block
+- **Low-diff share grace period** — configurable window (default 5s) to accept shares at the previous difficulty after a difficulty change
 - **mining.suggest_difficulty** — optionally honor miner-requested difficulty (configurable per coin)
 - **Password-based difficulty** — miners can set difficulty via `d=XXX` in the authorize password field
 - **Version Rolling** — BIP310 support for ASICBoost-capable miners
@@ -122,7 +123,8 @@ Copy `config.example.json` to `config.json` and edit for your setup. Key section
         "ping_enabled": true,
         "ping_interval": 30,
         "accept_suggest_diff": false,
-        "stale_share_grace": 5
+        "stale_share_grace": 5,
+        "low_diff_share_grace": 5
       },
       "mining": {
         "mode": "pool",
@@ -137,18 +139,99 @@ Copy `config.example.json` to `config.json` and edit for your setup. Key section
         "max_diff": 32768,
         "target_time": 15,
         "retarget_time": 300,
-        "variance_percent": 30
+        "variance_percent": 30,
+        "on_new_block": true
       }
     }
   }
 }
 ```
 
+### Generic Coin Support
+
+Any SHA256d coin can be added directly in `config.json` without code changes. When `coin_type` is not a built-in (`bitcoin`, `bitcoinii`, `bitcoincash`, `digibyte`, `ecash`), provide a `coin_definition` block with the coin's address parameters:
+
+```json
+{
+  "coins": {
+    "FB": {
+      "enabled": true,
+      "coin_type": "fractal",
+      "coin_definition": {
+        "name": "Fractal Bitcoin",
+        "symbol": "FB",
+        "segwit": true,
+        "address": {
+          "bech32": {
+            "hrp": { "mainnet": "bc", "testnet": "tb" }
+          },
+          "base58": {
+            "p2pkh": { "mainnet": 0, "testnet": 111 },
+            "p2sh": { "mainnet": 5, "testnet": 196 }
+          }
+        }
+      },
+      "node": { "host": "127.0.0.1", "port": 8332, "..." : "..." },
+      "stratum": { "..." : "..." },
+      "mining": { "..." : "..." },
+      "vardiff": { "..." : "..." }
+    }
+  }
+}
+```
+
+**`coin_definition` fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Display name (e.g., "Fractal Bitcoin") |
+| `symbol` | Yes | Ticker symbol, 2-10 uppercase characters (e.g., "FB") |
+| `segwit` | No | Whether the coin supports SegWit (default `false`) |
+| `address.base58.p2pkh` | Yes | P2PKH version bytes: `{ "mainnet": N, "testnet": N }` (0-255) |
+| `address.base58.p2sh` | No | P2SH version bytes (same format as p2pkh) |
+| `address.bech32.hrp` | If segwit | Bech32 human-readable prefix: `{ "mainnet": "bc", "testnet": "tb" }` |
+
+**What generic coins cover:** SHA256d coins with standard Base58 and/or Bech32 addresses — this includes most Bitcoin forks and clones.
+
+**What requires built-in support:** CashAddr address formats (BCH/XEC), custom coinbase splits (eCash miner fund/staking rewards), non-SHA256d algorithms, and RTT validation (eCash).
+
 ### Mining Modes
 
 **Pool mode** (`"mode": "pool"`) — All block rewards are sent to a single payout address configured in `mining.address`. GoStratumEngine does not include a payout system — reward distribution to individual miners must be handled externally.
 
 **Solo mode** (`"mode": "solo"`) — Each miner provides their wallet address as their worker name (e.g., `bc1qxyz.worker1`). Block rewards go directly to the miner's address. No `mining.address` needed.
+
+### Variable Difficulty (VarDiff)
+
+VarDiff automatically adjusts each miner's difficulty based on their hashrate. It uses a rolling window of share timestamps to calculate the average time between shares, then adjusts difficulty to match the configured target time.
+
+```json
+"vardiff": {
+  "enabled": true,
+  "min_diff": 512,
+  "max_diff": 32768,
+  "target_time": 15,
+  "retarget_time": 300,
+  "variance_percent": 30,
+  "float_diff": false,
+  "float_precision": 2,
+  "on_new_block": true
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `enabled` | `false` | Enable VarDiff for this coin |
+| `min_diff` | `512` | Minimum difficulty floor |
+| `max_diff` | `32768` | Maximum difficulty ceiling |
+| `target_time` | `15` | Target seconds between shares |
+| `retarget_time` | `300` | Minimum seconds between difficulty adjustments |
+| `variance_percent` | `30` | Acceptable deviation from target before adjusting (%) |
+| `float_diff` | `false` | Allow fractional difficulty values |
+| `float_precision` | `2` | Decimal places when `float_diff` is true |
+| `on_new_block` | `true` | Only deliver difficulty changes with new block notifications (clean jobs). When `false`, changes are delivered on any job broadcast including routine template refreshes. |
+
+When `on_new_block` is `true` (the default), difficulty changes are calculated on share acceptance but held until the next new block arrives. This prevents mid-block difficulty drops that could produce bursts of low-difficulty shares. Set to `false` on slow chains where you want faster difficulty adaptation — changes will then be delivered on the next template refresh (controlled by `template_refresh_interval`).
 
 ## API Endpoints
 
@@ -186,7 +269,7 @@ pkg/
 ## Requirements
 
 - Go 1.25+ (for building from source)
-- A full node for each coin you want to mine (Bitcoin Core, Bitcoin II Core, DigiByte Core, Bitcoin Cash Node, Bitcoin ABC)
+- A full node for each coin you want to mine (Bitcoin Core, Bitcoin II Core, DigiByte Core, Bitcoin Cash Node, Bitcoin ABC, or any SHA256d coin node)
 - ZMQ enabled on your node (recommended for instant block detection)
 
 ## Donation

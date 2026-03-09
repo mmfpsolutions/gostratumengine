@@ -43,8 +43,10 @@ type Session struct {
 	state        SessionState
 	workerName   string
 	extraNonce1  string
-	difficulty   float64
-	vardiff      *VarDiff
+	difficulty    float64
+	prevDiff      float64   // previous difficulty before last change
+	diffChangedAt time.Time // when difficulty last changed
+	vardiff       *VarDiff
 	logger       *logging.Logger
 	mu           sync.Mutex
 	closed       bool
@@ -237,13 +239,32 @@ func (s *Session) handleSubmit(req *Request) {
 
 	s.sendResult(req.ID, true)
 
-	// Check vardiff after successful share — store pending diff for next job broadcast
+	// Check vardiff after successful share — store pending diff for next job broadcast.
+	// Skip if a difficulty change is already pending — shares at the old difficulty
+	// would produce increasingly wrong calculations while waiting for delivery.
 	if s.vardiff != nil {
-		if newDiff := s.vardiff.RecordShare(); newDiff > 0 {
-			s.mu.Lock()
-			s.pendingDiff = newDiff
-			s.mu.Unlock()
-			s.logger.Debug("[%s] vardiff queued %.2f for %s (sent with next job)", s.ID, newDiff, s.workerName)
+		s.mu.Lock()
+		hasPending := s.pendingDiff > 0
+		s.mu.Unlock()
+		if hasPending {
+			s.logger.Debug("[%s] %s VARDIFF: skipped (pending diff %.4f waiting for delivery)",
+				s.ID, s.workerName, s.pendingDiff)
+		} else {
+			result := s.vardiff.RecordShare()
+			if diag := result.DiagString(); diag != "" {
+				if result.Adjusted {
+					s.logger.Debug("[%s] %s VARDIFF: adjusted %.4f -> %.4f | %s",
+						s.ID, s.workerName, result.CurrentDiff, result.ClampedDiff, diag)
+				} else {
+					s.logger.Debug("[%s] %s VARDIFF: no adjustment - %s (difficulty stays at %.4f) | %s",
+						s.ID, s.workerName, result.Reason, result.CurrentDiff, diag)
+				}
+			}
+			if result.Adjusted {
+				s.mu.Lock()
+				s.pendingDiff = result.ClampedDiff
+				s.mu.Unlock()
+			}
 		}
 	}
 }
@@ -278,6 +299,8 @@ func (s *Session) handleSuggestDifficulty(req *Request) {
 	}
 
 	s.mu.Lock()
+	s.prevDiff = s.difficulty
+	s.diffChangedAt = time.Now()
 	s.difficulty = newDiff
 	s.mu.Unlock()
 
@@ -337,6 +360,8 @@ func (s *Session) parsePasswordDifficulty(password string) {
 					val = s.vardiff.maxDiff
 				}
 			}
+			s.prevDiff = s.difficulty
+			s.diffChangedAt = time.Now()
 			s.difficulty = val
 			s.logger.Info("[%s] password difficulty set to %.2f for %s", s.ID, val, s.workerName)
 			return
@@ -356,14 +381,22 @@ func (s *Session) SendJob(job *Job) {
 		return
 	}
 
-	// Flush pending vardiff — send set_difficulty before the job
+	// Flush pending vardiff. When vardiffOnNewBlock is true (default),
+	// only apply on clean jobs (new blocks) to avoid low-diff shares mid-block.
 	s.mu.Lock()
-	if s.pendingDiff > 0 {
+	flushDiff := s.pendingDiff > 0 && (!s.server.vardiffOnNewBlock || job.CleanJobs)
+	if flushDiff {
 		newDiff := s.pendingDiff
+		s.prevDiff = s.difficulty
+		s.diffChangedAt = time.Now()
 		s.difficulty = newDiff
 		s.pendingDiff = 0
 		s.mu.Unlock()
 		s.sendJSON(SetDifficultyNotification(newDiff))
+		// Reset vardiff window so new difficulty starts with clean measurements
+		if s.vardiff != nil {
+			s.vardiff.ResetWindow(newDiff)
+		}
 		s.logger.Debug("[%s] vardiff applied %.2f for %s", s.ID, newDiff, s.workerName)
 	} else {
 		s.mu.Unlock()
@@ -423,6 +456,14 @@ func (s *Session) GetDifficulty() float64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.difficulty
+}
+
+// GetPrevDifficulty returns the previous difficulty and when it changed.
+// Used by the share validator for the low-diff grace period.
+func (s *Session) GetPrevDifficulty() (float64, time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.prevDiff, s.diffChangedAt
 }
 
 // Close marks the session as closed and closes the underlying connection.
