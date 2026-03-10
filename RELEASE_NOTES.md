@@ -1,24 +1,9 @@
-## What's New in v1.0.3
+## What's New in v1.0.4
 
-### Generic Coin Support
+### Mid-Block VarDiff — ASIC Miner Compatibility Fix
 
-Any SHA256d coin can now be added directly in `config.json` without code changes. Provide a `coin_definition` block with address version bytes and Bech32 HRP when using a non-built-in `coin_type`. See the [Generic Coin Support](README.md#generic-coin-support) section in the README for details.
+When `on_new_block` is set to `false`, VarDiff difficulty changes are now sent immediately with a job resend (`clean_jobs=false`). Previously, the pool sent only `mining.set_difficulty` and stored the pending change for the next job broadcast. Many ASIC miners (e.g., bitaxe) silently ignore `mining.set_difficulty` unless it is followed by a `mining.notify` — causing the miner to keep submitting shares at the old difficulty, which triggered repeated VarDiff adjustments in the wrong direction.
 
-### VarDiff Improvements
+The fix sends `mining.set_difficulty` followed by `mining.notify` with the current block template and `clean_jobs=false`. The miner acknowledges the new difficulty and continues hashing the same block — no hash power is wasted. The existing `prevDiff` grace period handles any in-flight shares at the old difficulty.
 
-- **`on_new_block` setting** — Controls when difficulty changes are delivered to miners. When `true` (default), changes are held until a new block arrives, preventing mid-block low-difficulty share bursts. Set to `false` for faster adaptation on slow chains.
-- **Accumulation fix** — VarDiff calculation is now skipped when a pending difficulty change is already queued, preventing runaway difficulty estimates while waiting for delivery.
-- **Window reset on delivery** — The share measurement window is cleared when a pending difficulty is applied, ensuring the new difficulty starts with clean data.
-- **Full diagnostic logging** — VarDiff decisions are logged at DEBUG level with diagnostics (share count, average time, target range, calculated/clamped diff, change percentage).
-
-### Low-Diff Share Grace Period
-
-New `low_diff_share_grace` stratum setting (default 5 seconds). After any difficulty change (vardiff, `suggest_difficulty`, or password-based), shares meeting the previous difficulty are accepted within the grace window. This prevents rejected shares during difficulty transitions.
-
-### Configuration Changes
-
-**New stratum settings:**
-- `low_diff_share_grace` — seconds to accept shares at previous difficulty after a change (default `5`)
-
-**New vardiff settings:**
-- `on_new_block` — only deliver difficulty changes on clean jobs (default `true`)
+This is especially important when polling is disabled and only ZMQ is used for block notifications, since there are no intermediate job broadcasts between blocks to flush pending difficulty changes.

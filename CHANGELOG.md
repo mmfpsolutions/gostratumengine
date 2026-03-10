@@ -1,6 +1,14 @@
 # Changelog
 
-All notable changes to GoStratumEngine are documented here. Each section corresponds to a released version. 1
+All notable changes to GoStratumEngine are documented here. Each section corresponds to a released version. 
+
+---
+
+## v1.0.4
+
+### Mid-Block VarDiff — ASIC Miner Compatibility Fix
+
+When `on_new_block` is set to `false`, VarDiff difficulty changes are now sent immediately with a job resend (`clean_jobs=false`). Previously, only `mining.set_difficulty` was queued — many ASIC miners (e.g., bitaxe) silently ignore difficulty changes without a following `mining.notify`, causing repeated VarDiff adjustments in the wrong direction. The pool now sends `mining.set_difficulty` + `mining.notify` (same block template, `clean_jobs=false`) so the miner applies the new difficulty without wasting hash power. Critical for ZMQ-only setups where no intermediate job broadcasts occur between blocks.
 
 ---
 

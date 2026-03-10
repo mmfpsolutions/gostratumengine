@@ -261,9 +261,15 @@ func (s *Session) handleSubmit(req *Request) {
 				}
 			}
 			if result.Adjusted {
-				s.mu.Lock()
-				s.pendingDiff = result.ClampedDiff
-				s.mu.Unlock()
+				if !s.server.vardiffOnNewBlock {
+					// Mid-block: send difficulty change immediately with job resend
+					s.sendMidBlockDifficulty(result.ClampedDiff)
+				} else {
+					// Queue for next job boundary (new block)
+					s.mu.Lock()
+					s.pendingDiff = result.ClampedDiff
+					s.mu.Unlock()
+				}
 			}
 		}
 	}
@@ -403,6 +409,40 @@ func (s *Session) SendJob(job *Job) {
 	}
 
 	s.sendJSON(NotifyNotification(job))
+}
+
+// sendMidBlockDifficulty sends a difficulty change immediately without waiting
+// for the next block. Resends the current job with clean_jobs=false so ASIC
+// miners (e.g., bitaxe) acknowledge the new difficulty without wasting hash power.
+func (s *Session) sendMidBlockDifficulty(newDiff float64) {
+	oldDiff := s.difficulty
+
+	// Update session state
+	s.mu.Lock()
+	s.prevDiff = s.difficulty
+	s.diffChangedAt = time.Now()
+	s.difficulty = newDiff
+	s.pendingDiff = 0
+	s.mu.Unlock()
+
+	// Send mining.set_difficulty
+	s.sendJSON(SetDifficultyNotification(newDiff))
+
+	// Reset vardiff window so new difficulty starts with clean measurements
+	if s.vardiff != nil {
+		s.vardiff.ResetWindow(newDiff)
+	}
+
+	// Resend current job with clean_jobs=false so the miner applies the new
+	// difficulty without discarding work on the current block template
+	if currentJob := s.server.getCurrentJob(); currentJob != nil {
+		resendJob := *currentJob
+		resendJob.CleanJobs = false
+		s.sendJSON(NotifyNotification(&resendJob))
+	}
+
+	s.logger.Info("[%s] %s VARDIFF: mid-block difficulty %.4f -> %.4f",
+		s.ID, s.workerName, oldDiff, newDiff)
 }
 
 func (s *Session) sendResult(id json.RawMessage, result interface{}) {
