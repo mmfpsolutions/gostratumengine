@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to GoStratumEngine are documented here. Each section corresponds to a released version.
+All notable changes to GoStratumEngine are documented here. Each section corresponds to a released version. 1
 
 ---
 
