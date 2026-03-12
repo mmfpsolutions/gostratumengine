@@ -951,18 +951,18 @@ print_summary() {
         local step=1
         if [[ "$INSTALL_NODE" == true ]]; then
             echo -e "    ${step}. Start the node:"
-            echo -e "       ${BASE_PATH}/${COIN_LOWER}/service.sh start"
+            echo -e "       sudo ${BASE_PATH}/${COIN_LOWER}/service.sh start"
             step=$((step + 1))
             echo -e "    ${step}. Wait for sync:"
-            echo -e "       ${BASE_PATH}/${COIN_LOWER}/${CLI_NAME} -datadir=${BASE_PATH}/${COIN_LOWER}/data getblockchaininfo"
+            echo -e "       sudo ${BASE_PATH}/${COIN_LOWER}/${CLI_NAME} -datadir=${BASE_PATH}/${COIN_LOWER}/data getblockchaininfo"
             step=$((step + 1))
         fi
         echo -e "    ${step}. Start GSE:"
-        echo -e "       ${BASE_PATH}/gse/gse.sh start"
+        echo -e "       sudo ${BASE_PATH}/gse/gse.sh start"
         step=$((step + 1))
         if [[ "$INSTALL_WEBUI" == true ]]; then
             echo -e "    ${step}. Start Dashboard:"
-            echo -e "       ${BASE_PATH}/gse-webui/dashboard.sh start"
+            echo -e "       sudo ${BASE_PATH}/gse-webui/dashboard.sh start"
         fi
     fi
 
