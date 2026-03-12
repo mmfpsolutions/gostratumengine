@@ -954,9 +954,9 @@ print_summary() {
         echo -e "    Dashboard:    8000   (http://<this-host>:8000)"
     fi
 
-    echo
     if [[ "$INSTALL_SYSTEMD" == true ]]; then
-        echo -e "  ${BOLD}Services are registered and will auto-start on boot.${RESET}"
+        echo
+        echo -e "  ${BOLD}Systemd Services (auto-start on boot):${RESET}"
         echo -e "  Start all now with:"
         if [[ "$INSTALL_NODE" == true ]]; then
             echo -e "    sudo systemctl start ${COIN_LOWER}-node.service"
@@ -966,24 +966,25 @@ print_summary() {
         if [[ "$INSTALL_WEBUI" == true ]]; then
             echo -e "    sudo systemctl start gse-webui.service"
         fi
-    else
-        echo -e "  ${BOLD}Quick Start:${RESET}"
-        local step=1
-        if [[ "$INSTALL_NODE" == true ]]; then
-            echo -e "    ${step}. Start the node:"
-            echo -e "       sudo ${BASE_PATH}/${COIN_LOWER}/service.sh start"
-            step=$((step + 1))
-            echo -e "    ${step}. Wait for sync:"
-            echo -e "       sudo ${BASE_PATH}/${COIN_LOWER}/${CLI_NAME} -datadir=${BASE_PATH}/${COIN_LOWER}/data getblockchaininfo"
-            step=$((step + 1))
-        fi
-        echo -e "    ${step}. Start GSE:"
-        echo -e "       sudo ${BASE_PATH}/gse/gse.sh start"
+    fi
+
+    echo
+    echo -e "  ${BOLD}Quick Start:${RESET}"
+    local step=1
+    if [[ "$INSTALL_NODE" == true ]]; then
+        echo -e "    ${step}. Start the node:"
+        echo -e "       sudo ${BASE_PATH}/${COIN_LOWER}/service.sh start"
         step=$((step + 1))
-        if [[ "$INSTALL_WEBUI" == true ]]; then
-            echo -e "    ${step}. Start Dashboard:"
-            echo -e "       sudo ${BASE_PATH}/gse-webui/dashboard.sh start"
-        fi
+        echo -e "    ${step}. Wait for sync:"
+        echo -e "       sudo ${BASE_PATH}/${COIN_LOWER}/${CLI_NAME} -datadir=${BASE_PATH}/${COIN_LOWER}/data getblockchaininfo"
+        step=$((step + 1))
+    fi
+    echo -e "    ${step}. Start GSE:"
+    echo -e "       sudo ${BASE_PATH}/gse/gse.sh start"
+    step=$((step + 1))
+    if [[ "$INSTALL_WEBUI" == true ]]; then
+        echo -e "    ${step}. Start Dashboard:"
+        echo -e "       sudo ${BASE_PATH}/gse-webui/dashboard.sh start"
     fi
 
     echo
