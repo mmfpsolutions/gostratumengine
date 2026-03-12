@@ -43,6 +43,7 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
+        "float_diff_below_one": true,
         "float_precision": 2,
         "on_new_block": true
       },
@@ -84,6 +85,7 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
+        "float_diff_below_one": true,
         "float_precision": 2,
         "on_new_block": true
       },
@@ -125,6 +127,7 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
+        "float_diff_below_one": true,
         "float_precision": 2,
         "on_new_block": true
       },
@@ -166,6 +169,7 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
+        "float_diff_below_one": true,
         "float_precision": 2,
         "on_new_block": true
       },
@@ -207,6 +211,7 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
+        "float_diff_below_one": true,
         "float_precision": 2,
         "on_new_block": true
       },
@@ -265,6 +270,7 @@
         "retarget_time": 300,
         "variance_percent": 30,
         "float_diff": false,
+        "float_diff_below_one": true,
         "float_precision": 2,
         "on_new_block": true
       },

@@ -119,3 +119,114 @@ func TestVarDiffFloatMode(t *testing.T) {
 		t.Errorf("float diff %f below min 0.01", result.ClampedDiff)
 	}
 }
+
+func TestVarDiffFloatDiffBelowOne(t *testing.T) {
+	// Test that floatDiffBelowOne rounds to integer for diff >= 1
+	// but preserves float precision for sub-1 values
+	t.Run("above_one_rounds_to_integer", func(t *testing.T) {
+		vd := NewVarDiff(VarDiffConfig{
+			MinDiff:           1,
+			MaxDiff:           200000,
+			TargetTime:        15,
+			RetargetTime:      0,
+			VariancePct:       1,
+			FloatDiff:         true,
+			FloatDiffBelowOne: true,
+			FloatPrecision:    4,
+		}, 50000)
+
+		// Simulate fast shares — should increase difficulty
+		now := time.Now()
+		vd.shareTimes = []time.Time{
+			now.Add(-8 * time.Second),
+			now.Add(-6 * time.Second),
+			now.Add(-4 * time.Second),
+			now.Add(-2 * time.Second),
+		}
+		vd.lastRetarget = now.Add(-1 * time.Hour)
+
+		result := vd.RecordShare()
+		if result.Adjusted {
+			// Difficulty should be a whole number (no decimals) when >= 1
+			if result.ClampedDiff != float64(int(result.ClampedDiff)) {
+				t.Errorf("floatDiffBelowOne: diff >= 1 should be integer, got %f", result.ClampedDiff)
+			}
+		}
+	})
+
+	t.Run("below_one_preserves_float", func(t *testing.T) {
+		vd := NewVarDiff(VarDiffConfig{
+			MinDiff:           0.001,
+			MaxDiff:           100,
+			TargetTime:        15,
+			RetargetTime:      0,
+			VariancePct:       1,
+			FloatDiff:         true,
+			FloatDiffBelowOne: true,
+			FloatPrecision:    4,
+		}, 0.5)
+
+		// Simulate slow shares — should decrease difficulty below 1
+		now := time.Now()
+		vd.shareTimes = []time.Time{
+			now.Add(-200 * time.Second),
+			now.Add(-150 * time.Second),
+			now.Add(-100 * time.Second),
+			now.Add(-50 * time.Second),
+		}
+		vd.lastRetarget = now.Add(-1 * time.Hour)
+
+		result := vd.RecordShare()
+		if result.Adjusted {
+			if result.ClampedDiff >= 1.0 {
+				t.Errorf("expected sub-1 difficulty, got %f", result.ClampedDiff)
+			}
+			// Should not be rounded to integer
+			if result.ClampedDiff == float64(int(result.ClampedDiff)) && result.ClampedDiff != 0 {
+				t.Errorf("sub-1 float diff should have decimal precision, got %f", result.ClampedDiff)
+			}
+		}
+	})
+
+	t.Run("disabled_uses_float_everywhere", func(t *testing.T) {
+		vd := NewVarDiff(VarDiffConfig{
+			MinDiff:           1,
+			MaxDiff:           200000,
+			TargetTime:        15,
+			RetargetTime:      0,
+			VariancePct:       1,
+			FloatDiff:         true,
+			FloatDiffBelowOne: false,
+			FloatPrecision:    4,
+		}, 50000)
+
+		// roundDifficulty should apply float precision even above 1
+		rounded := vd.roundDifficulty(103297.1234)
+		if rounded != 103297.1234 {
+			t.Errorf("floatDiffBelowOne=false: expected 103297.1234, got %f", rounded)
+		}
+	})
+
+	t.Run("enabled_integer_above_one", func(t *testing.T) {
+		vd := NewVarDiff(VarDiffConfig{
+			MinDiff:           1,
+			MaxDiff:           200000,
+			TargetTime:        15,
+			FloatDiff:         true,
+			FloatDiffBelowOne: true,
+			FloatPrecision:    4,
+		}, 50000)
+
+		// roundDifficulty should return integer for values >= 1
+		rounded := vd.roundDifficulty(103297.5678)
+		if rounded != 103298 {
+			t.Errorf("floatDiffBelowOne=true: expected 103298, got %f", rounded)
+		}
+
+		// But preserve float for sub-1
+		rounded = vd.roundDifficulty(0.00384)
+		if rounded != 0.0038 {
+			t.Errorf("floatDiffBelowOne=true sub-1: expected 0.0038, got %f", rounded)
+		}
+	})
+}

@@ -85,6 +85,7 @@ type VarDiffConfig struct {
 	RetargetTime   float64 `json:"retarget_time"`
 	VariancePct    float64 `json:"variance_percent"`
 	FloatDiff      bool    `json:"float_diff"`
+	FloatDiffBelowOne *bool `json:"float_diff_below_one,omitempty"` // only use float for sub-1 difficulty, integer for >= 1 (default true)
 	FloatPrecision int     `json:"float_precision"`
 	OnNewBlock     *bool   `json:"on_new_block,omitempty"` // only apply vardiff on clean jobs (default true)
 }
@@ -178,6 +179,10 @@ func applyDefaults(cfg *Config) {
 		}
 		if coin.VarDiff.FloatPrecision == 0 {
 			coin.VarDiff.FloatPrecision = 2
+		}
+		if coin.VarDiff.FloatDiffBelowOne == nil {
+			t := true
+			coin.VarDiff.FloatDiffBelowOne = &t
 		}
 		if coin.VarDiff.OnNewBlock == nil {
 			t := true
