@@ -1,0 +1,43 @@
+# Digitbyte configurations
+
+# Run in server mode
+server=1
+
+# Uncomment to disable listening
+#listen=1
+
+# Run as a daemon
+daemon=1
+
+# RPC Settings
+rpcauth={RPC_AUTH_STRING}
+rpcworkqueue=64
+rpcthreads=16
+rpcallowip=127.0.0.1
+rpcbind=127.0.0.1
+
+# Node Prune settings
+{prune_setting}
+
+# Algorithm Setting
+algo=sha256d
+
+# Tuning
+dbcache=1000
+maxmempool=1000
+
+# ZMQ Settings
+zmqpubhashblock=tcp://127.0.0.1:28332
+
+# Inbound limits
+maxuploadtarget=500      # 500mb per day upload limit
+maxreceivebuffer=5000    # Limit receive buffer per connection
+maxsendbuffer=1000       # Limit send buffer per connection
+maxconnections=32
+peerbloomfilters=0       # Disable bloom filter requests
+peerblockfilters=0       # Disable block filter serving
+blocksonly=1
+timeout=30000
+
+# Whitelist trusted connections
+whitelist=127.0.0.1      # Always allow local connections

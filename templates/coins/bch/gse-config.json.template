@@ -1,0 +1,42 @@
+"BCH": {
+      "enabled": true,
+      "coin_type": "bitcoincash",
+      "node": {
+        "host": "127.0.0.1",
+        "port": 8332,
+        "username": "{RPC_USER}",
+        "password": "{RPC_PASSWORD}",
+        "zmq_enabled": true,
+        "zmq_hashblock": "tcp://127.0.0.1:28332"
+      },
+      "stratum": {
+        "host": "0.0.0.0",
+        "port": 3333,
+        "difficulty": 512,
+        "ping_enabled": true,
+        "ping_interval": 30,
+        "accept_suggest_diff": true,
+        "stale_share_grace": 5,
+        "low_diff_share_grace": 5
+      },
+      "mining": {
+        "mode": "solo",
+        "address": "",
+        "network": "mainnet",
+        "coinbase_text": "GoStratumEngine",
+        "extranonce_size": 8
+      },
+      "vardiff": {
+        "enabled": true,
+        "min_diff": 256,
+        "max_diff": 16384,
+        "target_time": 15,
+        "retarget_time": 300,
+        "variance_percent": 30,
+        "float_diff": false,
+        "float_diff_below_one": true,
+        "float_precision": 2,
+        "on_new_block": false
+      },
+      "template_refresh_interval": 15
+    }

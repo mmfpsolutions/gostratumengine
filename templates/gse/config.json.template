@@ -1,0 +1,12 @@
+{
+  "pool_name": "GoStratumEngine",
+  "log_level": "info",
+  "api_port": 8080,
+  "donation": {
+    "enabled": true,
+    "percent": 1.0
+  },
+  "coins": {
+    __COIN_CONFIG__
+  }
+}
