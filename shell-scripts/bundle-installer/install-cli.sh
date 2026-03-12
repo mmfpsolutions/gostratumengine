@@ -13,20 +13,34 @@
 # Usage:
 #   sudo bash -c "$(curl -sSL https://get.gostratumengine.io/scripts/install-cli.sh)"
 #
+# Testing flags:
+#   --repo <org/repo>     Override the GSE GitHub repo (default: mmfpsolutions/gostratumengine)
+#   --branch <branch>     Override the branch for template fetching (default: main)
+#
 set -euo pipefail
 
 # ─── Constants ────────────────────────────────────────────────────────────────
 
 INSTALLER_VERSION="1.0.0"
 
-# GitHub repos
-GSE_REPO="gostratumengine/gostratumengine"
+# GitHub repos (GSE_REPO can be overridden via --repo flag)
+GSE_REPO="mmfpsolutions/gostratumengine"
+GSE_BRANCH="main"
 BTC_REPO="bitcoinknots/bitcoin"
 BCH_REPO="bitcoin-cash-node/bitcoin-cash-node"
 DGB_REPO="DigiByte-Core/digibyte"
 
+# Parse optional flags
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --repo)   GSE_REPO="$2"; shift 2 ;;
+        --branch) GSE_BRANCH="$2"; shift 2 ;;
+        *)        shift ;;
+    esac
+done
+
 # Raw content base URL for fetching templates and scripts
-RAW_BASE="https://raw.githubusercontent.com/${GSE_REPO}/main"
+RAW_BASE="https://raw.githubusercontent.com/${GSE_REPO}/${GSE_BRANCH}"
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 
