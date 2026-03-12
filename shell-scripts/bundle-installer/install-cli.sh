@@ -241,15 +241,11 @@ collect_user_input() {
     echo
     prompt_input "Base install path" "/mining" BASE_PATH
 
-    # Step 4: RPC credentials
+    # Step 4: RPC credentials (only if installing a node)
+    RPC_USER=""
+    RPC_PASS=""
     if [[ "$INSTALL_NODE" == true ]]; then
         echo
-        prompt_input "RPC username" "gseuser" RPC_USER
-        prompt_secret "RPC password (blank to auto-generate)" "" RPC_PASS
-    else
-        # GSE-only still needs RPC creds for config
-        echo
-        info "GSE needs RPC credentials to connect to your existing node."
         prompt_input "RPC username" "gseuser" RPC_USER
         prompt_secret "RPC password (blank to auto-generate)" "" RPC_PASS
     fi
@@ -923,10 +919,12 @@ print_summary() {
         echo -e "  ${BOLD}Dashboard Ctrl:${RESET}   ${BASE_PATH}/gse-webui/dashboard.sh {start|stop|status}"
     fi
 
-    echo
-    echo -e "  ${BOLD}${RED}IMPORTANT — Save These Credentials:${RESET}"
-    echo -e "  ${BOLD}RPC Username:${RESET}     ${RPC_USER}"
-    echo -e "  ${BOLD}RPC Password:${RESET}     ${RPC_PASS}"
+    if [[ -n "$RPC_USER" ]]; then
+        echo
+        echo -e "  ${BOLD}${RED}IMPORTANT — Save These Credentials:${RESET}"
+        echo -e "  ${BOLD}RPC Username:${RESET}     ${RPC_USER}"
+        echo -e "  ${BOLD}RPC Password:${RESET}     ${RPC_PASS}"
+    fi
     echo
 
     echo -e "  ${BOLD}Ports:${RESET}"
