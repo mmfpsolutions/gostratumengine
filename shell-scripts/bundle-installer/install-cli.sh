@@ -255,17 +255,19 @@ collect_user_input() {
     if [[ "$INSTALL_NODE" == true ]]; then
         echo
         echo -e "${BOLD}Enable blockchain pruning?${RESET}"
-        echo "  [1] Yes — 10GB  (prune=10000)"
-        echo "  [2] Yes — 50GB  (prune=50000)"
-        echo "  [3] No  — full node"
+        echo "  [1] Yes — 550MB  (Recommended — minimum needed for mining)"
+        echo "  [2] Yes — 10GB"
+        echo "  [3] Yes — 50GB"
+        echo "  [4] No  — full node"
         echo
         while true; do
-            read -rp "$(echo -e "${BOLD}Select [1-3]:${RESET} ")" choice
+            read -rp "$(echo -e "${BOLD}Select [1-4]:${RESET} ")" choice
             case "$choice" in
-                1) PRUNE_SETTING="prune=10000"; break ;;
-                2) PRUNE_SETTING="prune=50000"; break ;;
-                3) PRUNE_SETTING="# Pruning disabled — full node"; break ;;
-                *) warn "Please enter 1, 2, or 3." ;;
+                1) PRUNE_SETTING="prune=550"; break ;;
+                2) PRUNE_SETTING="prune=10000"; break ;;
+                3) PRUNE_SETTING="prune=50000"; break ;;
+                4) PRUNE_SETTING="# Pruning disabled — full node"; break ;;
+                *) warn "Please enter 1, 2, 3, or 4." ;;
             esac
         done
     fi
@@ -547,7 +549,7 @@ install_node() {
             else
                 arch_suffix="${GNU_ARCH}-linux-gnu"
             fi
-            asset_name="bitcoin-knots-${version}-${arch_suffix}.tar.gz"
+            asset_name="bitcoin-${version}-${arch_suffix}.tar.gz"
             ;;
         bch)
             # Bitcoin Cash Node: bitcoin-cash-node-VERSION-ARCH.tar.gz
