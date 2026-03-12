@@ -742,12 +742,12 @@ LOGEOF
         fi
     fi
 
-    # Add crontab entry (as the run user, not root)
+    # Add crontab entry on root (installer runs as root)
     local marker="GSE_LOG_ROTATION"
-    if crontab -u "$RUN_USER" -l 2>/dev/null | grep -q "$marker"; then
+    if crontab -l 2>/dev/null | grep -q "$marker"; then
         warn "Log rotation crontab entry already exists, skipping."
     else
-        (crontab -u "$RUN_USER" -l 2>/dev/null || true; echo "0 * * * * ${BASE_PATH}/log_rotation/log_rotation.sh ${BASE_PATH}/log_rotation/log_rotation.conf >> ${BASE_PATH}/log_rotation/cron.log 2>&1 # ${marker}") | crontab -u "$RUN_USER" -
+        (crontab -l 2>/dev/null || true; echo "0 * * * * ${BASE_PATH}/log_rotation/log_rotation.sh ${BASE_PATH}/log_rotation/log_rotation.conf >> ${BASE_PATH}/log_rotation/cron.log 2>&1 # ${marker}") | crontab -
         success "Crontab entry added (hourly log rotation)."
     fi
 

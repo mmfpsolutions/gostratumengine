@@ -239,8 +239,8 @@ fi
 
 if [[ "$LOGROTATION_INSTALLED" == "true" && -n "$CRONTAB_MARKER" ]]; then
     info "Removing crontab entry..."
-    if crontab -u "$RUN_USER" -l 2>/dev/null | grep -q "$CRONTAB_MARKER"; then
-        crontab -u "$RUN_USER" -l 2>/dev/null | grep -v "$CRONTAB_MARKER" | crontab -u "$RUN_USER" -
+    if crontab -l 2>/dev/null | grep -q "$CRONTAB_MARKER"; then
+        (crontab -l 2>/dev/null | grep -v "$CRONTAB_MARKER" || true) | crontab -
         success "Removed crontab entry."
     else
         info "No crontab entry found."
