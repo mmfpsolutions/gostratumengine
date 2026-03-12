@@ -214,6 +214,7 @@ VarDiff automatically adjusts each miner's difficulty based on their hashrate. I
   "retarget_time": 300,
   "variance_percent": 30,
   "float_diff": false,
+  "float_diff_below_one": true,
   "float_precision": 2,
   "on_new_block": true
 }
@@ -228,6 +229,7 @@ VarDiff automatically adjusts each miner's difficulty based on their hashrate. I
 | `retarget_time` | `300` | Minimum seconds between difficulty adjustments |
 | `variance_percent` | `30` | Acceptable deviation from target before adjusting (%) |
 | `float_diff` | `false` | Allow fractional difficulty values |
+| `float_diff_below_one` | `true` | Only use float difficulty for sub-1 values, integer for >= 1. Prevents firmware precision issues on Canaan/AxeOS devices at high difficulty magnitudes. Only applies when `float_diff` is `true`. |
 | `float_precision` | `2` | Decimal places when `float_diff` is true |
 | `on_new_block` | `true` | Only deliver difficulty changes with new block notifications (clean jobs). When `false`, changes are delivered on any job broadcast including routine template refreshes. |
 
