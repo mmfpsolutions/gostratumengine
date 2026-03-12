@@ -4,6 +4,18 @@ An open-source Stratum V1 mining pool engine written in Go. Clean-room implement
 
 GoStratumEngine is provided free of charge under the GPLv3 license. By default, the engine contributes 1% of solved blocks to the development team to help fund ongoing development. This applies to both pool and solo mining modes. Please consider leaving this contribution enabled if you are running GoStratumEngine, or contributing directly to the authors listed in `pkg/engine/AUTHORS`. The donation can be disabled or adjusted in `config.json` — see the [Donation](#donation) section below.
 
+## Get Started Fast
+
+Want to get mining as quickly as possible? The **bundle installer** sets up everything you need — GSE, a crypto node, the web dashboard, log rotation, and systemd services — in one command:
+
+```bash
+sudo bash -c "$(curl -sSL https://get.gostratumengine.io/scripts/install-cli.sh)"
+```
+
+It walks you through coin selection (BTC, BCH, or DGB), configures RPC credentials, sets up blockchain pruning, and gets you running. See the [Bundle Installer README](shell-scripts/bundle-installer/README.md) for details.
+
+If you prefer to set things up manually, keep reading.
+
 ## Features
 
 - **Multi-coin support** — BTC, BC2, BCH, DGB, XEC, plus any SHA256d coin via generic coin definitions
