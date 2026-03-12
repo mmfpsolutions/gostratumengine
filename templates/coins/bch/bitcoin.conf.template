@@ -32,7 +32,6 @@ maxreceivebuffer=5000    # Limit receive buffer per connection
 maxsendbuffer=1000       # Limit send buffer per connection
 maxconnections=32
 peerbloomfilters=0       # Disable bloom filter requests
-peerblockfilters=0       # Disable block filter serving
 blocksonly=1
 timeout=30000
 

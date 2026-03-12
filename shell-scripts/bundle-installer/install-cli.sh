@@ -183,17 +183,15 @@ collect_user_input() {
     echo "  [1] GSE only"
     echo "  [2] GSE + Crypto Node"
     echo "  [3] GSE + Crypto Node + Web Dashboard"
-    echo "  [4] Everything (GSE + Node + Dashboard + Log Rotation + Services)"
     echo
     local choice
     while true; do
-        read -rp "$(echo -e "${BOLD}Select [1-4]:${RESET} ")" choice
+        read -rp "$(echo -e "${BOLD}Select [1-3]:${RESET} ")" choice
         case "$choice" in
             1) INSTALL_NODE=false; INSTALL_WEBUI=false; INSTALL_LOGROTATION=false; INSTALL_SYSTEMD=false; break ;;
             2) INSTALL_NODE=true;  INSTALL_WEBUI=false; INSTALL_LOGROTATION=false; INSTALL_SYSTEMD=false; break ;;
             3) INSTALL_NODE=true;  INSTALL_WEBUI=true;  INSTALL_LOGROTATION=false; INSTALL_SYSTEMD=false; break ;;
-            4) INSTALL_NODE=true;  INSTALL_WEBUI=true;  INSTALL_LOGROTATION=true;  INSTALL_SYSTEMD=true;  break ;;
-            *) warn "Please enter 1, 2, 3, or 4." ;;
+            *) warn "Please enter 1, 2, or 3." ;;
         esac
     done
 
