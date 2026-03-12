@@ -1,0 +1,62 @@
+# Bitcoin Knots Node Configuration
+
+# Run in server mode
+server=1
+
+# Uncomment to disable listening
+#listen=1
+
+# Run as a daemon
+daemon=1
+
+# RPC Settings
+rpcauth={RPC_AUTH_STRING}
+rpcworkqueue=64
+rpcthreads=16
+rpcallowip=127.0.0.1
+rpcbind=127.0.0.1
+
+# Node Prune settings
+{prune_setting}
+
+# Tuning
+dbcache=1000
+maxmempool=1000
+
+# ZMQ Settings
+zmqpubhashblock=tcp://127.0.0.1:28332
+
+# Inbound limits
+maxuploadtarget=500      # 500mb per day upload limit
+maxreceivebuffer=5000    # Limit receive buffer per connection
+maxsendbuffer=1000       # Limit send buffer per connection
+maxconnections=32
+peerbloomfilters=0       # Disable bloom filter requests
+peerblockfilters=0       # Disable block filter serving
+blocksonly=1
+timeout=30000
+
+# Whitelist trusted connections
+whitelist=127.0.0.1
+
+# ============================================================
+# BITCOIN KNOTS SPECIFIC - Anti-Spam/Ordinals Filtering
+# ============================================================
+
+# Limit data carrier size to filter most Ordinals/Inscriptions
+# 42 bytes = strict (Luke's preference, filters most spam)
+# 83 bytes = new default in latest Knots (slightly more permissive)
+datacarriersize=42
+
+# Disable bare multisig (used by some inscription techniques)
+permitbaremultisig=0
+
+# Discourage address reuse (privacy + anti-spam)
+spkreuse=0
+
+# Only relay/mine transactions paying full fees (no witness discount abuse)
+# This makes inscriptions pay proper fees for their bloat
+blockmintxfee=0.00001000
+
+# Additional spam protection
+dustrelayfee=0.00003000
