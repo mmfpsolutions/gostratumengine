@@ -84,8 +84,9 @@ func NewCoinRunner(symbol string, cfg config.CoinConfig, donation config.Donatio
 			TargetTime:     cfg.VarDiff.TargetTime,
 			RetargetTime:   cfg.VarDiff.RetargetTime,
 			VariancePct:    cfg.VarDiff.VariancePct,
-			FloatDiff:      cfg.VarDiff.FloatDiff,
-			FloatPrecision: cfg.VarDiff.FloatPrecision,
+			FloatDiff:         cfg.VarDiff.FloatDiff,
+			FloatDiffBelowOne: cfg.VarDiff.FloatDiffBelowOne != nil && *cfg.VarDiff.FloatDiffBelowOne,
+			FloatPrecision:    cfg.VarDiff.FloatPrecision,
 		}
 	}
 

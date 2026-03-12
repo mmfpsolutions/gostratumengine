@@ -47,8 +47,9 @@ type VarDiff struct {
 	targetTime     float64 // desired seconds between shares
 	retargetTime   float64 // seconds between retarget checks
 	variancePct    float64 // acceptable variance as fraction (e.g., 0.30)
-	floatDiff      bool    // allow float difficulty values
-	floatPrecision int     // decimal places for float diff
+	floatDiff         bool    // allow float difficulty values
+	floatDiffBelowOne bool    // only use float for sub-1, integer for >= 1
+	floatPrecision    int     // decimal places for float diff
 
 	currentDiff  float64
 	shareTimes   []time.Time // timestamps of last N shares
@@ -58,13 +59,14 @@ type VarDiff struct {
 
 // VarDiffConfig holds configuration for variable difficulty.
 type VarDiffConfig struct {
-	MinDiff        float64
-	MaxDiff        float64
-	TargetTime     float64
-	RetargetTime   float64
-	VariancePct    float64
-	FloatDiff      bool
-	FloatPrecision int
+	MinDiff           float64
+	MaxDiff           float64
+	TargetTime        float64
+	RetargetTime      float64
+	VariancePct       float64
+	FloatDiff         bool
+	FloatDiffBelowOne bool
+	FloatPrecision    int
 }
 
 // NewVarDiff creates a new VarDiff tracker with the given configuration.
@@ -75,13 +77,33 @@ func NewVarDiff(cfg VarDiffConfig, initialDiff float64) *VarDiff {
 		targetTime:     cfg.TargetTime,
 		retargetTime:   cfg.RetargetTime,
 		variancePct:    cfg.VariancePct / 100.0, // convert from percentage
-		floatDiff:      cfg.FloatDiff,
-		floatPrecision: cfg.FloatPrecision,
+		floatDiff:         cfg.FloatDiff,
+		floatDiffBelowOne: cfg.FloatDiffBelowOne,
+		floatPrecision:    cfg.FloatPrecision,
 		currentDiff:    initialDiff,
 		shareTimes:     make([]time.Time, 0, 10),
 		lastRetarget:   time.Now(),
 		maxShares:      10,
 	}
+}
+
+// roundDifficulty applies the appropriate rounding based on config:
+// - floatDiff off: always round to integer (min 1)
+// - floatDiff on + floatDiffBelowOne: float for sub-1, integer for >= 1
+// - floatDiff on + floatDiffBelowOne off: float at configured precision
+func (v *VarDiff) roundDifficulty(diff float64) float64 {
+	if !v.floatDiff {
+		diff = math.Round(diff)
+		if diff < 1 {
+			diff = 1
+		}
+		return diff
+	}
+	if v.floatDiffBelowOne && diff >= 1.0 {
+		return math.Round(diff)
+	}
+	p := math.Pow(10, float64(v.floatPrecision))
+	return math.Round(diff*p) / p
 }
 
 // CurrentDiff returns the current difficulty.
@@ -167,16 +189,7 @@ func (v *VarDiff) RecordShare() VarDiffResult {
 	}
 
 	// Round based on float mode
-	if !v.floatDiff {
-		newDiff = math.Round(newDiff)
-		if newDiff < 1 {
-			newDiff = 1
-		}
-	} else {
-		// Round to configured precision
-		p := math.Pow(10, float64(v.floatPrecision))
-		newDiff = math.Round(newDiff*p) / p
-	}
+	newDiff = v.roundDifficulty(newDiff)
 
 	// Skip if change is less than 1%
 	change := math.Abs(newDiff-v.currentDiff) / v.currentDiff

@@ -4,6 +4,22 @@ All notable changes to GoStratumEngine are documented here. Each section corresp
 
 ---
 
+## v1.0.5
+
+### Float Diff Below One — Firmware-Safe Float Difficulty
+
+New `float_diff_below_one` vardiff setting (default `true`). When `float_diff` is enabled, float precision is now restricted to sub-1 difficulty values only — difficulty >= 1 is rounded to integer. This prevents firmware precision issues on Canaan Nano3S and other ASIC devices where float difficulty at high magnitudes (100K+) caused CRC/COM_CRC errors due to float32 limitations in embedded firmware. Set to `false` to restore the previous behavior (float at all magnitudes).
+
+The rounding logic is centralized in a new `roundDifficulty()` method with three modes:
+- `float_diff` off: always round to integer (min 1)
+- `float_diff` on + `float_diff_below_one` on: float for sub-1, integer for >= 1
+- `float_diff` on + `float_diff_below_one` off: float at configured precision for all values
+
+**New vardiff setting:**
+- `float_diff_below_one` — only use float difficulty for sub-1 values, integer for >= 1 (default `true`)
+
+---
+
 ## v1.0.4
 
 ### Mid-Block VarDiff — ASIC Miner Compatibility Fix
