@@ -164,6 +164,45 @@ if [[ "$SYSTEMD_INSTALLED" == "true" ]]; then
 fi
 
 # Also stop via PID files in case systemd wasn't used
+# Stop the node first (uses cli for graceful shutdown, falls back to kill)
+if [[ "$NODE_INSTALLED" == "true" ]]; then
+    NODE_PID_FILE="${NODE_DATA_PATH}/${NODE_DAEMON}.pid"
+    # Try cli stop first for graceful shutdown
+    if [[ -x "${BASE_PATH}/${NODE_COIN_LOWER}/${NODE_CLI}" ]]; then
+        "${BASE_PATH}/${NODE_COIN_LOWER}/${NODE_CLI}" -datadir="${NODE_DATA_PATH}" stop 2>/dev/null && \
+            success "Sent stop command to ${NODE_COIN} node" || true
+    fi
+    # Fall back to PID file
+    if [[ -f "$NODE_PID_FILE" ]]; then
+        local_pid=$(cat "$NODE_PID_FILE")
+        if kill -0 "$local_pid" 2>/dev/null; then
+            kill "$local_pid"
+            success "Stopped ${NODE_COIN} node (PID ${local_pid})"
+        fi
+    else
+        # No PID file — try to find the running process
+        local_pid=$(pgrep -f "${NODE_DAEMON}.*${NODE_DATA_PATH}" 2>/dev/null || true)
+        if [[ -n "$local_pid" ]]; then
+            kill "$local_pid"
+            success "Stopped ${NODE_COIN} node (PID ${local_pid})"
+        fi
+    fi
+    # Wait for node to actually stop before removing files
+    if [[ -n "${local_pid:-}" ]] && kill -0 "$local_pid" 2>/dev/null; then
+        info "Waiting for ${NODE_COIN} node to shut down..."
+        timeout=60
+        while kill -0 "$local_pid" 2>/dev/null; do
+            sleep 1
+            timeout=$((timeout - 1))
+            if [[ $timeout -eq 0 ]]; then
+                warn "Node did not stop gracefully. Force killing..."
+                kill -9 "$local_pid" 2>/dev/null || true
+                break
+            fi
+        done
+    fi
+fi
+
 if [[ -f "${BASE_PATH}/gse/gse.pid" ]]; then
     local_pid=$(cat "${BASE_PATH}/gse/gse.pid")
     if kill -0 "$local_pid" 2>/dev/null; then
