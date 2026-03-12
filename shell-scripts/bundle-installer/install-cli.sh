@@ -722,6 +722,26 @@ LOGEOF
         echo "${BASE_PATH}/gse-webui/logs/dashboard.log | 25 | 30 | yes | ${BASE_PATH}/gse-webui/logs/archive" >> "$conf"
     fi
 
+    # Ensure crontab is available
+    if ! command -v crontab &>/dev/null; then
+        info "Installing cron (required for log rotation)..."
+        if command -v apt-get &>/dev/null; then
+            apt-get install -y -qq cron >/dev/null 2>&1
+            systemctl enable cron >/dev/null 2>&1 || true
+            systemctl start cron >/dev/null 2>&1 || true
+        elif command -v yum &>/dev/null; then
+            yum install -y -q cronie >/dev/null 2>&1
+            systemctl enable crond >/dev/null 2>&1 || true
+            systemctl start crond >/dev/null 2>&1 || true
+        else
+            warn "Could not install cron automatically. Log rotation crontab skipped."
+            warn "Install cron manually and run: crontab -u ${RUN_USER} -e"
+            chown -R "${RUN_USER}:${RUN_GROUP}" "${BASE_PATH}/log_rotation"
+            success "Log rotation scripts installed (crontab entry must be added manually)."
+            return
+        fi
+    fi
+
     # Add crontab entry (as the run user, not root)
     local marker="GSE_LOG_ROTATION"
     if crontab -u "$RUN_USER" -l 2>/dev/null | grep -q "$marker"; then
