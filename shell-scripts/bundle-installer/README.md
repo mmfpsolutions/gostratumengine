@@ -2,7 +2,7 @@
 
 Interactive CLI installer and uninstaller for deploying GoStratumEngine and its dependencies on a Linux server.
 
-## What It Installs
+## What It Installs:
 
 | Component | Description | Path |
 |-----------|-------------|------|
