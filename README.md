@@ -9,7 +9,7 @@ GoStratumEngine is provided free of charge under the GPLv3 license. By default, 
 Want to get mining as quickly as possible? The **bundle installer** sets up everything you need — GSE, a crypto node, the web dashboard, log rotation, and systemd services — in one command:
 
 ```bash
-sudo bash -c "$(curl -sSL https://get.gostratumengine.io/scripts/install-cli.sh)"
+sudo bash -c "$(curl -sSL https://get.gostratumengine.io/shell-scripts/bundle-installer/install-cli.sh)"
 ```
 
 It walks you through coin selection (BTC, BCH, or DGB), configures RPC credentials, sets up blockchain pruning, and gets you running. See the [Bundle Installer README](shell-scripts/bundle-installer/README.md) for details.
