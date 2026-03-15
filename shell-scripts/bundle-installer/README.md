@@ -24,7 +24,7 @@ The default base path is `/mining`.
 ## Install
 
 ```bash
-sudo bash -c "$(curl -sSL https://get.gostratumengine.io/scripts/install-cli.sh)"
+sudo bash -c "$(curl -sSL https://get.gostratumengine.io/shell-scripts/bundle-installer/install-cli.sh)"
 ```
 
 The installer will interactively prompt for:
@@ -43,7 +43,7 @@ A confirmation summary is displayed before any changes are made.
 ## Uninstall
 
 ```bash
-sudo bash -c "$(curl -sSL https://get.gostratumengine.io/scripts/uninstall-cli.sh)"
+sudo bash -c "$(curl -sSL https://get.gostratumengine.io/shell-scripts/bundle-installer/uninstall-cli.sh)"
 ```
 
 The uninstaller reads the installation manifest (`.gse-manifest.json`) to know exactly what was installed. It offers two removal modes:
