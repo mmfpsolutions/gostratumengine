@@ -28,7 +28,7 @@ If you prefer to set things up manually, keep reading.
 - **Version Rolling** — BIP310 support for ASICBoost-capable miners
 - **Server-side Ping** — configurable mining.ping/pong keepalive cycle
 - **ZMQ block notifications** — instant new block detection via pure-Go ZMQ (no CGO)
-- **Address format support** — Bech32 (P2WPKH/P2WSH), Base58 (P2PKH/P2SH), and CashAddr
+- **Address format support** — Bech32 (P2WPKH/P2WSH), Bech32m Taproot (P2TR), Base58 (P2PKH/P2SH), and CashAddr
 - **Metrics API** — HTTP endpoints for pool stats, per-worker metrics, and live session info
 - **No database** — all state is in-memory for simplicity and performance
 
@@ -37,8 +37,10 @@ If you prefer to set things up manually, keep reading.
 Most open-source stratum implementations only support Bitcoin. GoStratumEngine includes native DigiByte support:
 
 - **SegWit-aware coinbase construction** — proper witness commitment handling for DGB's SegWit transactions
-- **Native address validation** — Bech32 (`dgb1...`), P2PKH, and P2SH with correct DGB version bytes (mainnet and testnet)
-- **Correct address script generation** — P2WPKH, P2WSH, P2PKH, and P2SH output scripts for DGB's address formats
+- **Native address validation** — Bech32 (`dgb1q...`), Taproot (`dgb1p...`), P2PKH, and P2SH with correct DGB version bytes (mainnet and testnet)
+- **Correct address script generation** — P2WPKH, P2WSH, P2TR, P2PKH, and P2SH output scripts for DGB's address formats
+- **Works with any node `algo=` setting** — names SHA256d in every template request, so a node configured for another DigiByte algorithm still serves the right template
+- **DigiDollar-aware block templates** — requests DigiDollar templates from the node and carries the node's oracle commitment in the coinbase, so blocks can include DigiDollar mint and redeem transactions. Works unchanged on nodes without DigiDollar.
 
 DigiByte uses SHA-256d for its SHA-256 algorithm slot, making it compatible with standard Bitcoin ASIC miners. GoStratumEngine handles DGB's unique address encoding and SegWit implementation out of the box.
 
@@ -204,6 +206,8 @@ Any SHA256d coin can be added directly in `config.json` without code changes. Wh
 | `address.bech32.hrp` | If segwit | Bech32 human-readable prefix: `{ "mainnet": "bc", "testnet": "tb" }` |
 
 **What generic coins cover:** SHA256d coins with standard Base58 and/or Bech32 addresses — this includes most Bitcoin forks and clones.
+
+**Taproot on generic coins:** a coin with `segwit: true` also accepts Taproot (`…1p…`) addresses. Only use one if Taproot is active on that chain; where it isn't, a Taproot output is not protected by your key. A wallet for such a chain won't give you a Taproot address.
 
 **What requires built-in support:** CashAddr address formats (BCH/XEC), custom coinbase splits (eCash miner fund/staking rewards), non-SHA256d algorithms, and RTT validation (eCash).
 

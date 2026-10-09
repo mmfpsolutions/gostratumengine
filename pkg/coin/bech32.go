@@ -12,11 +12,21 @@ package coin
 import (
 	"fmt"
 	"strings"
+
+	"github.com/mmfpsolutions/gostratumengine/pkg/coinbase"
 )
 
-// Bech32 encoding/decoding for SegWit addresses (BIP173).
+// Bech32 (BIP173) and Bech32m (BIP350) encoding/decoding for SegWit addresses.
 
 const bech32Charset = "qpzry9x8gf2tvdw0s3jn54khce6mua7l"
+
+// Checksum constants. The two encodings differ only in the value the
+// checksum polymod must equal: witness version 0 addresses use Bech32,
+// versions 1 and up (Taproot is version 1) use Bech32m.
+const (
+	bech32Const  = 1
+	bech32mConst = 0x2bc830a3
+)
 
 var bech32CharsetRev [128]int8
 
@@ -57,8 +67,15 @@ func bech32HRPExpand(hrp string) []int {
 }
 
 func bech32VerifyChecksum(hrp string, data []int) bool {
+	return bech32ChecksumConst(hrp, data) == bech32Const
+}
+
+// bech32ChecksumConst returns the polymod of hrp + data (data includes the
+// 6 checksum symbols): bech32Const for a valid Bech32 string, bech32mConst
+// for a valid Bech32m string, anything else for an invalid checksum.
+func bech32ChecksumConst(hrp string, data []int) int {
 	values := append(bech32HRPExpand(hrp), data...)
-	return bech32Polymod(values) == 1
+	return bech32Polymod(values)
 }
 
 func bech32CreateChecksum(hrp string, data []int) []int {
@@ -72,22 +89,38 @@ func bech32CreateChecksum(hrp string, data []int) []int {
 	return ret
 }
 
-// Bech32Decode decodes a Bech32 string, returning the HRP and data.
+// Bech32Decode decodes a Bech32 string, returning the HRP and data. Bech32m
+// strings are rejected; use DecodeBech32Address for addresses, which accepts
+// whichever encoding the witness version requires.
 func Bech32Decode(bech string) (string, []int, error) {
+	hrp, data, checksumConst, err := bech32DecodeAny(bech)
+	if err != nil {
+		return "", nil, err
+	}
+	if checksumConst != bech32Const {
+		return "", nil, fmt.Errorf("invalid bech32 checksum")
+	}
+	return hrp, data, nil
+}
+
+// bech32DecodeAny decodes a Bech32 or Bech32m string. It returns the HRP, the
+// data without the checksum, and which checksum constant matched
+// (bech32Const or bech32mConst).
+func bech32DecodeAny(bech string) (string, []int, int, error) {
 	if len(bech) > 90 {
-		return "", nil, fmt.Errorf("bech32 string too long")
+		return "", nil, 0, fmt.Errorf("bech32 string too long")
 	}
 
 	lower := strings.ToLower(bech)
 	upper := strings.ToUpper(bech)
 	if bech != lower && bech != upper {
-		return "", nil, fmt.Errorf("mixed case in bech32 string")
+		return "", nil, 0, fmt.Errorf("mixed case in bech32 string")
 	}
 	bech = lower
 
 	pos := strings.LastIndex(bech, "1")
 	if pos < 1 || pos+7 > len(bech) {
-		return "", nil, fmt.Errorf("invalid bech32 separator position")
+		return "", nil, 0, fmt.Errorf("invalid bech32 separator position")
 	}
 
 	hrp := bech[:pos]
@@ -96,16 +129,17 @@ func Bech32Decode(bech string) (string, []int, error) {
 	data := make([]int, len(dataStr))
 	for i, c := range dataStr {
 		if c > 127 || bech32CharsetRev[c] == -1 {
-			return "", nil, fmt.Errorf("invalid bech32 character: %c", c)
+			return "", nil, 0, fmt.Errorf("invalid bech32 character: %c", c)
 		}
 		data[i] = int(bech32CharsetRev[c])
 	}
 
-	if !bech32VerifyChecksum(hrp, data) {
-		return "", nil, fmt.Errorf("invalid bech32 checksum")
+	checksumConst := bech32ChecksumConst(hrp, data)
+	if checksumConst != bech32Const && checksumConst != bech32mConst {
+		return "", nil, 0, fmt.Errorf("invalid bech32 checksum")
 	}
 
-	return hrp, data[:len(data)-6], nil
+	return hrp, data[:len(data)-6], checksumConst, nil
 }
 
 // Bech32Encode encodes data with the given HRP into a Bech32 string.
@@ -151,10 +185,15 @@ func ConvertBits(data []int, fromBits, toBits uint, pad bool) ([]int, error) {
 	return ret, nil
 }
 
-// DecodeBech32Address decodes a Bech32 SegWit address and returns the witness version
-// and witness program bytes.
+// DecodeBech32Address decodes a SegWit address and returns the witness version
+// and witness program bytes. It enforces the BIP173/BIP350 address rules:
+//   - witness version 0 must use the Bech32 checksum, versions 1-16 must use
+//     Bech32m (an address with the other checksum is rejected, even though the
+//     checksum itself verifies);
+//   - witness version is at most 16;
+//   - the program is 2 to 40 bytes, and exactly 20 or 32 bytes for version 0.
 func DecodeBech32Address(address, expectedHRP string) (byte, []byte, error) {
-	hrp, data, err := Bech32Decode(address)
+	hrp, data, checksumConst, err := bech32DecodeAny(address)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -166,6 +205,16 @@ func DecodeBech32Address(address, expectedHRP string) (byte, []byte, error) {
 	}
 
 	witnessVersion := byte(data[0])
+	if witnessVersion > 16 {
+		return 0, nil, fmt.Errorf("invalid witness version: %d", witnessVersion)
+	}
+	if witnessVersion == 0 && checksumConst != bech32Const {
+		return 0, nil, fmt.Errorf("witness version 0 address must use the bech32 checksum, not bech32m")
+	}
+	if witnessVersion != 0 && checksumConst != bech32mConst {
+		return 0, nil, fmt.Errorf("witness version %d address must use the bech32m checksum, not bech32", witnessVersion)
+	}
+
 	program, err := ConvertBits(data[1:], 5, 8, false)
 	if err != nil {
 		return 0, nil, fmt.Errorf("converting bits: %w", err)
@@ -176,9 +225,29 @@ func DecodeBech32Address(address, expectedHRP string) (byte, []byte, error) {
 		programBytes[i] = byte(v)
 	}
 
+	if len(programBytes) < 2 || len(programBytes) > 40 {
+		return 0, nil, fmt.Errorf("invalid witness program length: %d", len(programBytes))
+	}
 	if witnessVersion == 0 && len(programBytes) != 20 && len(programBytes) != 32 {
 		return 0, nil, fmt.Errorf("invalid witness program length for v0: %d", len(programBytes))
 	}
 
 	return witnessVersion, programBytes, nil
+}
+
+// segwitOutputScript returns the output script for a decoded SegWit address,
+// for the address types GSE can pay: P2WPKH and P2WSH (witness version 0) and
+// P2TR (witness version 1 with a 32-byte program). Anything else is an error.
+// ValidateAddress and AddressToScript both use it, so an address is accepted
+// exactly when it can be paid.
+func segwitOutputScript(witnessVersion byte, program []byte) ([]byte, error) {
+	switch {
+	case witnessVersion == 0 && len(program) == 20:
+		return coinbase.P2WPKHScript(program), nil
+	case witnessVersion == 0 && len(program) == 32:
+		return coinbase.P2WSHScript(program), nil
+	case witnessVersion == 1 && len(program) == 32:
+		return coinbase.P2TRScript(program), nil
+	}
+	return nil, fmt.Errorf("unsupported witness version %d with %d-byte program", witnessVersion, len(program))
 }

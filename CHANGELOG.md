@@ -4,6 +4,39 @@ All notable changes to GoStratumEngine are documented here. Each section corresp
 
 ---
 
+## v1.0.6
+
+### Taproot (P2TR) Addresses
+
+Payout and miner addresses can now be Taproot addresses (`bc1p...`, `dgb1p...`) on Bitcoin, BitcoinII, DigiByte and generic SegWit coins. Previously they were rejected.
+
+- Bech32m (BIP350) is decoded alongside Bech32. The checksum type must match the witness version: version 0 uses Bech32, version 1 and up use Bech32m. An address with the wrong checksum type is rejected.
+- Witness versions above 16 and programs outside 2-40 bytes are rejected.
+- `ValidateAddress` and `AddressToScript` now agree: an address is accepted only if GSE can pay it. Before, an address of an unsupported type could pass validation and fail later, when a job was built.
+- Tested against the official BIP173 and BIP350 address vectors, valid and invalid.
+
+**Generic coins:** only use a Taproot address on a chain where Taproot is active.
+
+### DigiDollar Oracle Commitment (DigiByte)
+
+DigiByte pools now request DigiDollar-aware block templates (`rules: ["segwit", "digidollar-oracle"]`). When the node returns `default_oracle_commitment`, GSE copies it byte for byte into a zero-value coinbase output, placed before the witness commitment. Blocks can then include DigiDollar mint and redeem transactions.
+
+- Always on for DigiByte; there is no setting.
+- If the node returns no commitment (an older node, DigiDollar not active, or no oracle bundle ready), nothing is added and the coinbase is identical to v1.0.5's.
+- The donation output is unaffected.
+
+### DigiByte: Algorithm Named in Template Requests
+
+GSE now names `sha256d` in every DigiByte `getblocktemplate` request. Previously it sent no algorithm and got a template for the node's own default (`algo=` in `digibyte.conf`, or scrypt when unset). On a node set to another algorithm, the template's target belonged to that algorithm: nearly every share was reported as a block, and every submission was rejected with `high-hash`. `algo=sha256d` in `digibyte.conf` is no longer required.
+
+### Donation Addresses
+
+- BTC, BCH and DGB mainnet donation addresses in `pkg/engine/AUTHORS` updated.
+- Bitcoin Silver (BTCS) added. BTCS is a generic coin, so the donation applies when the coin's config key is `BTCS` and its definition has SegWit enabled with the Bech32 prefix `bs`.
+- New test: every `AUTHORS` entry must convert to a payable script. An address that doesn't convert only disables the donation with a warning at start-up, so this is checked at build time.
+
+---
+
 ## v1.0.5
 
 ### Float Diff Below One — Firmware-Safe Float Difficulty

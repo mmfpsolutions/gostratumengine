@@ -1,13 +1,27 @@
-## What's New in v1.0.5
+## What's New in v1.0.6
 
-### Float Diff Below One — Firmware-Safe Float Difficulty
+### Taproot Addresses
 
-When `float_diff` is enabled, the pool can now restrict float precision to sub-1 difficulty values only, sending integer difficulty for values >= 1. This is controlled by the new `float_diff_below_one` setting (default: `true`).
+You can now mine to a Taproot address (`bc1p...`, `dgb1p...`) on Bitcoin, BitcoinII, DigiByte and generic SegWit coins, as the pool payout address or as a miner's address in solo mode. Earlier versions rejected them.
 
-This resolves a firmware compatibility issue discovered on Canaan Nano3S (and potentially other ASIC devices) where float difficulty at high magnitudes (100K+) caused CRC/COM_CRC errors on the chip data bus. Embedded miner firmware typically uses float32 internally, which only supports ~7 significant digits. A difficulty like `103297.0000` exceeds float32 precision, causing the firmware to misinterpret the value and produce hardware errors.
+Address checking is also stricter and more consistent. An address is accepted only if GoStratumEngine can actually pay it, so an unsupported address is refused when the miner connects or the pool starts, not later when a job is built. Addresses that worked in v1.0.5 work the same way.
 
-With `float_diff_below_one` enabled:
-- Difficulty < 1 (e.g., `0.0038`, `0.022`) — sent as float with configured precision. Ideal for tiny miners like NerdMiner and ESP32 devices.
-- Difficulty >= 1 (e.g., `4096`, `103297`) — rounded to integer. Safe for all ASIC firmware including Canaan and AxeOS devices that truncate or can't process float difficulty.
+If you run a generic coin, only use a Taproot address when Taproot is active on that chain.
 
-To use the previous behavior (float at all magnitudes), set `"float_diff_below_one": false` in your vardiff config.
+### DigiDollar Support for DigiByte
+
+DigiByte pools now ask the node for DigiDollar-aware block templates and carry the node's oracle commitment in the coinbase. Your blocks can include DigiDollar mint and redeem transactions, and collect their fees.
+
+There is nothing to configure. It's always on for DigiByte, and it works with any node: if the node doesn't provide an oracle commitment, GoStratumEngine builds exactly the same block as before.
+
+### DigiByte Nodes No Longer Need `algo=sha256d`
+
+GoStratumEngine now tells the DigiByte node which algorithm it is mining. Before, it relied on the node's own `algo=` setting, and a node set to anything other than `sha256d` (including a node with no setting, which defaults to scrypt) made every share look like a block and every block submission fail with `high-hash`. The setting no longer matters.
+
+### Donation Addresses
+
+The BTC, BCH and DGB donation addresses have been updated, and Bitcoin Silver (BTCS) has been added for pools that run it as a generic coin with the config key `BTCS`.
+
+### Upgrading
+
+No configuration changes are needed.

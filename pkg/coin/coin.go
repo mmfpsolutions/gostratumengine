@@ -78,6 +78,28 @@ var (
 	registryMu sync.RWMutex
 )
 
+// TemplateAlgorithmCoin is implemented by multi-algorithm coins whose node
+// takes the mining algorithm as getblocktemplate's second parameter.
+//
+// Without it the node answers for its own default algorithm (DigiByte: the
+// "algo=" setting in digibyte.conf, scrypt if unset). The target in that
+// template belongs to another algorithm, so nearly every share looks like a
+// block and every submission is rejected with "high-hash".
+type TemplateAlgorithmCoin interface {
+	// TemplateAlgorithm returns the algorithm name the node expects, e.g. "sha256d".
+	TemplateAlgorithm() string
+}
+
+// TemplateExtraParams returns the positional getblocktemplate parameters to
+// send after the request object for c: the algorithm for a
+// TemplateAlgorithmCoin, nothing for any other coin.
+func TemplateExtraParams(c Coin) []interface{} {
+	if ac, ok := c.(TemplateAlgorithmCoin); ok {
+		return []interface{}{ac.TemplateAlgorithm()}
+	}
+	return nil
+}
+
 // Register adds a coin to the global registry by its coin_type key.
 func Register(coinType string, c Coin) {
 	registryMu.Lock()

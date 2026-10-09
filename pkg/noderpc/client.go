@@ -107,13 +107,16 @@ func (c *Client) GetBlockchainInfo() (*BlockchainInfo, error) {
 	return &info, nil
 }
 
-// GetBlockTemplate requests a new block template from the node.
-func (c *Client) GetBlockTemplate(rules []string) (*BlockTemplate, error) {
+// GetBlockTemplate requests a new block template from the node. extraParams
+// are positional parameters sent after the template request object; DigiByte
+// takes the mining algorithm there (see coin.TemplateAlgorithmCoin).
+func (c *Client) GetBlockTemplate(rules []string, extraParams ...interface{}) (*BlockTemplate, error) {
 	params := []interface{}{
 		map[string]interface{}{
 			"rules": rules,
 		},
 	}
+	params = append(params, extraParams...)
 	result, err := c.call("getblocktemplate", params)
 	if err != nil {
 		return nil, err

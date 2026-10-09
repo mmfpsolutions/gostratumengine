@@ -59,8 +59,9 @@ func (b *BitcoinII) ValidateAddress(address, network string) error {
 	}
 
 	// Try Bech32
-	if _, _, err := DecodeBech32Address(address, hrp); err == nil {
-		return nil
+	if witnessVersion, program, err := DecodeBech32Address(address, hrp); err == nil {
+		_, err := segwitOutputScript(witnessVersion, program)
+		return err
 	}
 
 	// Try Base58Check
@@ -93,13 +94,7 @@ func (b *BitcoinII) AddressToScript(address, network string) ([]byte, error) {
 	// Try Bech32
 	witnessVersion, program, err := DecodeBech32Address(address, hrp)
 	if err == nil {
-		if witnessVersion == 0 && len(program) == 20 {
-			return coinbase.P2WPKHScript(program), nil
-		}
-		if witnessVersion == 0 && len(program) == 32 {
-			return coinbase.P2WSHScript(program), nil
-		}
-		return nil, fmt.Errorf("unsupported witness version %d", witnessVersion)
+		return segwitOutputScript(witnessVersion, program)
 	}
 
 	// Try Base58Check

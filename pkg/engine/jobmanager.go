@@ -208,7 +208,7 @@ func (jm *JobManager) pollLoop() {
 func (jm *JobManager) refreshTemplate(force bool) error {
 	jm.logger.Debug("polling node for new template (force=%v)", force)
 
-	template, err := jm.rpcClient.GetBlockTemplate(jm.coin.TemplateRules())
+	template, err := jm.rpcClient.GetBlockTemplate(jm.coin.TemplateRules(), coin.TemplateExtraParams(jm.coin)...)
 	if err != nil {
 		return err
 	}

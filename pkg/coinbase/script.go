@@ -25,6 +25,7 @@ const (
 	OpEqual       = 0x87
 	OpReturn      = 0x6a
 	Op0           = 0x00
+	Op1           = 0x51
 )
 
 // P2PKHScript creates a Pay-to-Public-Key-Hash output script.
@@ -62,6 +63,15 @@ func P2WSHScript(scriptHash []byte) []byte {
 	script := make([]byte, 0, 34)
 	script = append(script, Op0, 0x20)
 	script = append(script, scriptHash...)
+	return script
+}
+
+// P2TRScript creates a Pay-to-Taproot output script (SegWit v1, BIP341).
+// Input: 32-byte output key (the witness program of a Taproot address).
+func P2TRScript(outputKey []byte) []byte {
+	script := make([]byte, 0, 34)
+	script = append(script, Op1, 0x20)
+	script = append(script, outputKey...)
 	return script
 }
 

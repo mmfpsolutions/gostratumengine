@@ -5,25 +5,30 @@
 # block reward is donated to the project authors listed below.
 #
 # This code was developed by Scott Walter, MMFP Solutions LLC
-# <scott {at} mmfpsolution {dot} io>
+# <scott {at} mmfpsolutions {dot} io>
 # Format: SYMBOL NETWORK ADDRESS
 # Lines starting with # are comments. Blank lines are ignored.
 # The first matching SYMBOL+NETWORK entry is used.
 
 # Bitcoin (BTC)
-BTC mainnet bc1qxfju0ynhkt2muq9jaqj2nh78yg5qgmpk5kl00v
+BTC mainnet bc1q4qa2nv2djmcaxr7zcsanj8adty4ade2yt8lg6d
 BTC testnet mgGsP6XUSy6YBfJJ8r4o5B9ZjEq1R5inRV
 
 # Bitcoin Cash (BCH)
-BCH mainnet bitcoincash:qr7tknknndvdh8jyq0v9qzectcmx5zgqlvhqncystt
+BCH mainnet bitcoincash:qr9k5z7gurklwq8en78ctz3a6t5t87rzds7ee5ymtn
 BCH testnet bchtest:qqjhdmjy2yfxynjys0n6hggnx32pgvheegntrkmvqu
 
 # DigiByte (DGB)
-DGB mainnet D8HCqTxncZkSvejbhx7ByLXAPSrEpaBzZ5
-DGB testnet dgbt1q087z5hmn78fegv8nw7wmx8wxtppr8c59aa03yl
+DGB mainnet dgb1q3ym6z2j87unymufd0g8m89xge3r2pr43a20h5l
+DGB testnet dgbt1pyggp0zuglphuxr0nkly3ncgplkltccsnyajpu29retkky338r4dqjzjtlj
 
 # eCash (XEC)
 XEC mainnet ecash:qpyryen4uqy79s2qum3aq9t7pv8ge67fxsxrvjftfn
 
 # Bitcoin II (BC2)
 BC2 mainnet 1HNH8hUJatNNcHQwNa7yBmueraBCJLLAkG
+
+# Bitcoin Silver (BTCS)
+# Not a built-in coin: used when BTCS is configured as a coin_definition with
+# the config key "BTCS", segwit enabled and the Bech32 prefix "bs".
+BTCS mainnet bs1qcfw7w8dx60twrthxnajn49hfu2qdgm4w5w00uf

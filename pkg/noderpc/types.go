@@ -52,6 +52,9 @@ type BlockTemplate struct {
 	Bits                  string                 `json:"bits"`
 	Height                int64                  `json:"height"`
 	DefaultWitnessCommitment string              `json:"default_witness_commitment"`
+	// DigiByte DigiDollar: the oracle commitment scriptPubKey, returned only
+	// when the "digidollar-oracle" rule was requested and a bundle is ready.
+	DefaultOracleCommitment  string              `json:"default_oracle_commitment,omitempty"`
 	Rules                 []string               `json:"rules"`
 	// eCash-specific fields
 	CoinbaseTxn           *CoinbaseTxn           `json:"coinbasetxn,omitempty"`

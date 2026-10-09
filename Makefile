@@ -1,5 +1,6 @@
 APP_NAME := gostratumengine
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+# Read from the VERSION file, the same source the Release workflow uses.
+VERSION := $(shell cat VERSION 2>/dev/null || echo "dev")
 BUILD_DATE := $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 LDFLAGS := -X main.version=$(VERSION) -X main.buildDate=$(BUILD_DATE) -X main.commit=$(COMMIT)

@@ -42,8 +42,24 @@ func (d *DigiByte) Params() CoinParams {
 	}
 }
 
+// TemplateRules requests SegWit and DigiDollar-aware templates.
+//
+// "digidollar-oracle" opts in to templates that can carry DigiDollar mint and
+// redeem transactions together with default_oracle_commitment. It is safe on
+// every node version and activation state: a node that doesn't know the rule,
+// or where DigiDollar isn't active, returns a normal template with no
+// commitment and a standard block is built. Requesting the rule and including
+// the commitment are one unit: BuildCoinbase copies the commitment whenever
+// the template has one, so GSE never opts in without also including it.
 func (d *DigiByte) TemplateRules() []string {
-	return []string{"segwit"}
+	return []string{"segwit", "digidollar-oracle"}
+}
+
+// TemplateAlgorithm names the algorithm in every getblocktemplate request, so
+// the template never depends on the node's "algo=" setting. GSE mines
+// DigiByte's SHA256d algorithm only.
+func (d *DigiByte) TemplateAlgorithm() string {
+	return d.Algorithm()
 }
 
 func (d *DigiByte) ValidateAddress(address, network string) error {
@@ -59,8 +75,9 @@ func (d *DigiByte) ValidateAddress(address, network string) error {
 	}
 
 	// Try Bech32
-	if _, _, err := DecodeBech32Address(address, hrp); err == nil {
-		return nil
+	if witnessVersion, program, err := DecodeBech32Address(address, hrp); err == nil {
+		_, err := segwitOutputScript(witnessVersion, program)
+		return err
 	}
 
 	// Try Base58Check
@@ -93,13 +110,7 @@ func (d *DigiByte) AddressToScript(address, network string) ([]byte, error) {
 	// Try Bech32
 	witnessVersion, program, err := DecodeBech32Address(address, hrp)
 	if err == nil {
-		if witnessVersion == 0 && len(program) == 20 {
-			return coinbase.P2WPKHScript(program), nil
-		}
-		if witnessVersion == 0 && len(program) == 32 {
-			return coinbase.P2WSHScript(program), nil
-		}
-		return nil, fmt.Errorf("unsupported witness version %d", witnessVersion)
+		return segwitOutputScript(witnessVersion, program)
 	}
 
 	// Try Base58Check
@@ -134,6 +145,22 @@ func (d *DigiByte) BuildCoinbase(template *noderpc.BlockTemplate, address, netwo
 	}
 
 	outputs = append(outputs, extraOutputs...)
+
+	// Add the DigiDollar oracle commitment if the template has one. Core
+	// returns the complete scriptPubKey; it is copied byte for byte into one
+	// zero-value output, never decoded, rebuilt or invented. It goes BEFORE the
+	// witness commitment, which stays last. A block that carries DigiDollar
+	// mint/redeem transactions without this exact output is invalid.
+	if template.DefaultOracleCommitment != "" {
+		commitment, err := hex.DecodeString(template.DefaultOracleCommitment)
+		if err != nil {
+			return "", "", fmt.Errorf("decoding oracle commitment: %w", err)
+		}
+		outputs = append(outputs, coinbase.CoinbaseOutput{
+			Value:  0,
+			Script: commitment,
+		})
+	}
 
 	// Add witness commitment if present (included in txid format for merkle root correctness)
 	if template.DefaultWitnessCommitment != "" {

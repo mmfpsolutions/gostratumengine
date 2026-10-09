@@ -135,3 +135,17 @@ func TestComputeMerkleRootFromBranches(t *testing.T) {
 		t.Error("no branches should return coinbase hash")
 	}
 }
+
+func TestP2TRScript(t *testing.T) {
+	// BIP350 vector: bc1p0xlx...zk5jj0 pays to OP_1 PUSH32 <key>.
+	key, _ := hex.DecodeString("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+	script := P2TRScript(key)
+
+	want, _ := hex.DecodeString("512079be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+	if !bytes.Equal(script, want) {
+		t.Errorf("P2TR script = %x, want %x", script, want)
+	}
+	if len(script) != 34 || script[0] != Op1 || script[1] != 0x20 {
+		t.Errorf("P2TR script should be OP_1 PUSH32 <32 bytes>, got %x", script)
+	}
+}
